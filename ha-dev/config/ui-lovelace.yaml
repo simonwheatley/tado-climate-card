@@ -4,22 +4,25 @@ views:
     icon: mdi:thermostat
     cards:
       - type: custom:tado-climate-card
-        entity: climate.bedroom
-        name: Bedroom
+        entity: climate.hallway
 
       - type: custom:tado-climate-card
-        entity: climate.living_room
-        name: Living Room
+        entity: climate.living_room_2
 
       - type: custom:tado-climate-card
-        entity: climate.kitchen
-        name: Kitchen
+        entity: climate.front_bedroom
 
-      # Helper controls to toggle override states for testing
-      - type: entities
-        title: Override test controls
-        entities:
-          - entity: input_select.bedroom_termination
-          - entity: input_select.living_room_termination
-          - entity: input_select.kitchen_termination
-          - entity: input_datetime.living_room_termination_timestamp
+      - type: custom:tado-climate-card
+        entity: climate.back_bedroom
+
+      - type: custom:tado-climate-card
+        entity: climate.rufus_bedroom
+
+      - type: custom:tado-climate-card
+        entity: climate.extension_dining
+
+      - type: custom:tado-climate-card
+        entity: climate.extension_patio
+
+      - type: custom:tado-climate-card
+        entity: climate.utility

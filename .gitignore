@@ -15,3 +15,4 @@ ha-dev/config/**/*.pyc
 
 # Built card served from www/ — source of truth is dist/
 ha-dev/config/www/
+ha-dev/tests/__pycache__/
