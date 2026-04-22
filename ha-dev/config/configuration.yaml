@@ -17,13 +17,13 @@ frontend:
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /local/tado-climate-card.js?v=11
+    - url: /local/tado-climate-card.js?v=12
       type: module
   dashboards:
     lovelace:
       mode: yaml
       filename: ui-lovelace.yaml
-      title: Overview
+      title: Tado Dev
       icon: mdi:view-dashboard
       show_in_sidebar: true
 

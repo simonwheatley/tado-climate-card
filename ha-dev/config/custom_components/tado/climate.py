@@ -599,14 +599,29 @@ class TadoClimate(TadoZoneEntity, ClimateEntity):
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Return temperature offset."""
-        state_attr: dict[str, Any] = self._tado_zone_temp_offset
+        """Return Tado zone attributes for the custom UI."""
+        state_attr: dict[str, Any] = dict(self._tado_zone_temp_offset)
+
+        # Zone default overlay configuration (what Tado falls back to)
         state_attr[HA_TERMINATION_TYPE] = (
             self._tado_zone_data.default_overlay_termination_type
         )
         state_attr[HA_TERMINATION_DURATION] = (
             self._tado_zone_data.default_overlay_termination_duration
         )
+
+        # Current active overlay state — used by tado-more-info-climate /
+        # tado-overlay-strip to show remaining time and resume controls.
+        state_attr["HA_DEFAULT_OVERLAY_TYPE"] = (
+            self._tado_zone_data.default_overlay_termination_type
+        )
+        state_attr["HA_TERMINATION_TYPE"] = (
+            self._tado_zone_data.overlay_termination_type
+        )
+        state_attr["HA_TERMINATION_TIMESTAMP"] = (
+            self._tado_zone_data.overlay_termination_timestamp
+        )
+
         return state_attr
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:

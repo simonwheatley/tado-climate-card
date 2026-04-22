@@ -2,7 +2,8 @@ export type HvacAction = "heating" | "cooling" | "idle" | "off";
 export type HvacMode = "heat" | "cool" | "auto" | "off" | "heat_cool" | "fan_only" | "dry";
 export type PresetMode = "home" | "away" | "auto" | "none" | "boost" | "sleep";
 
-export type TerminationType = "MANUAL" | "TIMER" | "NEXT_TIME_BLOCK" | "TADO_MODE";
+// null = following smart schedule (no active overlay)
+export type TerminationType = "MANUAL" | "TIMER" | "NEXT_TIME_BLOCK" | "TADO_MODE" | null;
 
 export interface TadoClimateAttributes {
   current_temperature: number;

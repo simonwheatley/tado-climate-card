@@ -156,7 +156,7 @@ export class TadoClimateCard extends LitElement {
           <span class="target-temp-label">${colorValue < 5 ? "Off" : `${targetTemp.toFixed(1)}°`}</span>
         </div>
 
-        <div class="slider-row">
+        <div class="slider-row" @click=${(e: Event) => e.stopPropagation()}>
           <ha-control-slider
             .value=${sliderValue}
             .min=${SLIDER_MIN}
@@ -172,11 +172,13 @@ export class TadoClimateCard extends LitElement {
           ></ha-control-slider>
         </div>
 
-        <tado-overlay-strip
-          .hass=${this.hass}
-          .entity=${entity}
-          .hideEdit=${true}
-        ></tado-overlay-strip>
+        <div @click=${(e: Event) => e.stopPropagation()}>
+          <tado-overlay-strip
+            .hass=${this.hass}
+            .entity=${entity}
+            .hideEdit=${true}
+          ></tado-overlay-strip>
+        </div>
       </ha-card>
     `;
   }
