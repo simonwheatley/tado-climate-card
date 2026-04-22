@@ -1,0 +1,25 @@
+title: Tado Dev
+views:
+  - title: Climate
+    icon: mdi:thermostat
+    cards:
+      - type: custom:tado-climate-card
+        entity: climate.bedroom
+        name: Bedroom
+
+      - type: custom:tado-climate-card
+        entity: climate.living_room
+        name: Living Room
+
+      - type: custom:tado-climate-card
+        entity: climate.kitchen
+        name: Kitchen
+
+      # Helper controls to toggle override states for testing
+      - type: entities
+        title: Override test controls
+        entities:
+          - entity: input_select.bedroom_termination
+          - entity: input_select.living_room_termination
+          - entity: input_select.kitchen_termination
+          - entity: input_datetime.living_room_termination_timestamp

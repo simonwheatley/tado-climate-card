@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# HA runtime / generated files — never commit these
+ha-dev/config/.storage/
+ha-dev/config/.cache/
+ha-dev/config/.ha_run.lock
+ha-dev/config/.HA_VERSION
+ha-dev/config/home-assistant.log*
+ha-dev/config/home-assistant_v2.db*
+ha-dev/config/**/__pycache__/
+ha-dev/config/**/*.pyc
+
+# Built card served from www/ — source of truth is dist/
+ha-dev/config/www/

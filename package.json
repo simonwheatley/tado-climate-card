@@ -1,0 +1,21 @@
+{
+  "name": "tado-climate-card",
+  "version": "0.1.0",
+  "description": "Tado climate card for Home Assistant with overlay/schedule controls",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch",
+    "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.9.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "lit": "^3.1.0"
+  }
+}
