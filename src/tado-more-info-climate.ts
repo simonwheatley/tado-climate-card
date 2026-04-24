@@ -209,36 +209,28 @@ export class TadoMoreInfoClimate extends LitElement {
       gap: 6px;
     }
 
-    .duration-text {
-      font-size: 0.85em;
-      color: var(--primary-text-color);
-      font-weight: 500;
-      cursor: pointer;
-      border-radius: 4px;
-      padding: 2px 4px;
-    }
-
-    .duration-text:hover { color: var(--primary-color); }
-
-    .pencil-btn {
+    .duration-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       background: none;
       border: none;
       padding: 4px 6px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      color: var(--secondary-text-color);
       border-radius: 4px;
-      flex-shrink: 0;
+      font-size: 0.85em;
+      font-weight: 500;
+      color: var(--primary-text-color);
+      font-family: inherit;
     }
 
-    .pencil-btn:hover {
+    .duration-edit-btn:hover {
       color: var(--primary-color);
       background: color-mix(in srgb, var(--primary-color) 8%, transparent);
     }
 
-    .pencil-btn ha-icon {
-      --mdc-icon-size: 17px;
+    .duration-edit-btn ha-icon {
+      --mdc-icon-size: 16px;
       color: inherit;
     }
 
@@ -380,12 +372,9 @@ export class TadoMoreInfoClimate extends LitElement {
       return html`
         <div class="duration-section">
           <div class="duration-committed-row">
-            <span class="duration-text"
+            <button class="duration-edit-btn" title="Edit duration"
               @click=${() => { this._editingDuration = true; }}>
-              ${selected.summary}
-            </span>
-            <button class="pencil-btn" title="Edit duration"
-              @click=${() => { this._editingDuration = true; }}>
+              <span>${selected.summary}</span>
               <ha-icon .icon=${"mdi:pencil"}></ha-icon>
             </button>
             <button class="resume-btn" @click=${this._resume}>

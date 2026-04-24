@@ -60,13 +60,6 @@ export class TadoOverlayStrip extends LitElement {
       padding: 2px 0;
     }
 
-    .pencil-icon {
-      --mdc-icon-size: 16px;
-      color: var(--primary-text-color);
-      opacity: 0.7;
-      flex-shrink: 0;
-    }
-
     .resume-btn {
       display: inline-flex;
       align-items: center;
@@ -123,7 +116,6 @@ export class TadoOverlayStrip extends LitElement {
           <div class="remaining">
             <span class="dot"></span>
             <span class="duration-text">${label}</span>
-            <ha-icon class="pencil-icon" .icon=${"mdi:pencil"}></ha-icon>
           </div>
           <button class="resume-btn" @click=${this._resume}>
             <ha-icon .icon=${"mdi:restore"}></ha-icon>
