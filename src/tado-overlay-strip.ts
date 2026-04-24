@@ -56,8 +56,28 @@ export class TadoOverlayStrip extends LitElement {
       flex-shrink: 0;
     }
 
-    .duration-text {
-      padding: 2px 0;
+    .duration-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      padding: 2px 4px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: inherit;
+      color: inherit;
+      font-family: inherit;
+    }
+
+    .duration-edit-btn:hover {
+      color: var(--primary-color);
+      background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    }
+
+    .duration-edit-btn ha-icon {
+      --mdc-icon-size: 15px;
+      color: inherit;
     }
 
     .resume-btn {
@@ -115,7 +135,10 @@ export class TadoOverlayStrip extends LitElement {
         <div class="summary-row">
           <div class="remaining">
             <span class="dot"></span>
-            <span class="duration-text">${label}</span>
+            <button class="duration-edit-btn" title="Edit duration">
+              <span>${label}</span>
+              <ha-icon .icon=${"mdi:pencil"}></ha-icon>
+            </button>
           </div>
           <button class="resume-btn" @click=${this._resume}>
             <ha-icon .icon=${"mdi:restore"}></ha-icon>
