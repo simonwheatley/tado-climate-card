@@ -212,7 +212,7 @@ export class TadoMoreInfoClimate extends LitElement {
     .duration-edit-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 3px;
       background: none;
       border: none;
       padding: 4px 6px;
