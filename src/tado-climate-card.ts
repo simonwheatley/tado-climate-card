@@ -187,12 +187,10 @@ export class TadoClimateCard extends LitElement {
           ></ha-control-slider>
         </div>
 
-        <div @click=${(e: Event) => e.stopPropagation()}>
-          <tado-overlay-strip
-            .hass=${this.hass}
-            .entity=${entity}
-          ></tado-overlay-strip>
-        </div>
+        <tado-overlay-strip
+          .hass=${this.hass}
+          .entity=${entity}
+        ></tado-overlay-strip>
       </ha-card>
     `;
   }

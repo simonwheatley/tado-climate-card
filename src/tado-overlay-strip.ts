@@ -57,29 +57,14 @@ export class TadoOverlayStrip extends LitElement {
     }
 
     .duration-text {
-      cursor: pointer;
-      border-radius: 4px;
-      padding: 2px 4px;
+      padding: 2px 0;
     }
 
-    .duration-text:hover { color: var(--primary-color); }
-
-    .pencil-btn {
-      background: none;
-      border: none;
-      padding: 4px 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      color: var(--secondary-text-color);
-      border-radius: 4px;
-    }
-
-    .pencil-btn:hover { color: var(--primary-color); }
-
-    .pencil-btn ha-icon {
-      --mdc-icon-size: 15px;
-      color: inherit;
+    .pencil-icon {
+      --mdc-icon-size: 16px;
+      color: var(--primary-text-color);
+      opacity: 0.7;
+      flex-shrink: 0;
     }
 
     .resume-btn {
@@ -116,22 +101,13 @@ export class TadoOverlayStrip extends LitElement {
     return t === "MANUAL" || t === "TIMER" || t === "NEXT_TIME_BLOCK";
   }
 
+  // Stop click from bubbling to the card (which would open the popup)
+  // so that Resume Schedule is a direct action.
   private _resume(e: Event) {
     e.stopPropagation();
     this.hass.callService("tado", "resume_schedule", {}, {
       entity_id: this.entity.entity_id,
     });
-  }
-
-  private _openPopupInEditMode(e: Event) {
-    e.stopPropagation();
-    (window as unknown as { __tadoEditOnOpen?: string }).__tadoEditOnOpen =
-      this.entity.entity_id;
-    this.dispatchEvent(new CustomEvent("hass-more-info", {
-      bubbles: true,
-      composed: true,
-      detail: { entityId: this.entity.entity_id },
-    }));
   }
 
   render() {
@@ -146,11 +122,8 @@ export class TadoOverlayStrip extends LitElement {
         <div class="summary-row">
           <div class="remaining">
             <span class="dot"></span>
-            <span class="duration-text" @click=${this._openPopupInEditMode}>${label}</span>
-            <button class="pencil-btn" title="Edit duration"
-              @click=${this._openPopupInEditMode}>
-              <ha-icon .icon=${"mdi:pencil"}></ha-icon>
-            </button>
+            <span class="duration-text">${label}</span>
+            <ha-icon class="pencil-icon" .icon=${"mdi:pencil"}></ha-icon>
           </div>
           <button class="resume-btn" @click=${this._resume}>
             <ha-icon .icon=${"mdi:restore"}></ha-icon>

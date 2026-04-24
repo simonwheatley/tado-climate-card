@@ -78,12 +78,6 @@ export class TadoMoreInfoClimate extends LitElement {
           this._selectedDuration = null;
         }
 
-        // Honour the "open in edit mode" flag set by the dashboard card strip.
-        const win = window as unknown as { __tadoEditOnOpen?: string };
-        if (win.__tadoEditOnOpen === this.stateObj.entity_id) {
-          this._editingDuration = true;
-          delete win.__tadoEditOnOpen;
-        }
       }
     }
   }
@@ -151,10 +145,37 @@ export class TadoMoreInfoClimate extends LitElement {
       border-top: 1px solid var(--divider-color);
     }
 
+    .change-until-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
     .change-until-label {
       font-size: 0.8em;
       color: var(--secondary-text-color);
-      margin-bottom: 8px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      padding: 2px 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      color: var(--secondary-text-color);
+      border-radius: 4px;
+    }
+
+    .close-btn:hover {
+      color: var(--primary-text-color);
+      background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+    }
+
+    .close-btn ha-icon {
+      --mdc-icon-size: 18px;
+      color: inherit;
     }
 
     .chips {
@@ -292,7 +313,9 @@ export class TadoMoreInfoClimate extends LitElement {
       const opt = DURATIONS.find((d) => d.key === durationKey)!;
       this._applyDuration(opt, snap);
       this._selectedDuration = durationKey;
-      this._editingDuration = false;
+      // Keep chips visible so user can change duration if the auto-applied
+      // one wasn't what they wanted.
+      this._editingDuration = true;
 
       // Turn heat on if currently off
       if (this.stateObj.state === "off") {
@@ -330,10 +353,16 @@ export class TadoMoreInfoClimate extends LitElement {
 
   private _renderDurationSection() {
     // Chip picker — no resume button shown
-    if (this._editingDuration || (this._selectedDuration === null && this._pendingValue !== null)) {
+    if (this._editingDuration) {
       return html`
         <div class="duration-section">
-          <div class="change-until-label">Change until</div>
+          <div class="change-until-header">
+            <span class="change-until-label">Change until</span>
+            <button class="close-btn" title="Close"
+              @click=${() => { this._editingDuration = false; }}>
+              <ha-icon .icon=${"mdi:close"}></ha-icon>
+            </button>
+          </div>
           <div class="chips">
             ${DURATIONS.map((opt) => html`
               <button class="chip" @click=${() => this._selectDuration(opt)}>
