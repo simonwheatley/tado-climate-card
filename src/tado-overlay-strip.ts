@@ -1,14 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { customElement, property } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TerminationType } from "./types.js";
-
-const DURATION_CHIPS: { label: string; minutes?: number; overlay?: "NEXT_TIME_BLOCK" | "MANUAL" }[] = [
-  { label: "30m", minutes: 30 },
-  { label: "1h",  minutes: 60 },
-  { label: "2h",  minutes: 120 },
-  { label: "Next block", overlay: "NEXT_TIME_BLOCK" },
-  { label: "∞",   overlay: "MANUAL" },
-];
 
 function remainingLabel(type: TerminationType, timestamp?: string): string {
   switch (type) {
@@ -22,7 +14,7 @@ function remainingLabel(type: TerminationType, timestamp?: string): string {
       const m = mins % 60;
       return m > 0 ? `${h}h ${m}m remaining` : `${h}h remaining`;
     }
-    case "NEXT_TIME_BLOCK": return "Until next block";
+    case "NEXT_TIME_BLOCK": return "Until next time block";
     case "MANUAL":          return "Until you resume schedule";
     case "TADO_MODE":       return "Zone default";
   }
@@ -32,10 +24,6 @@ function remainingLabel(type: TerminationType, timestamp?: string): string {
 export class TadoOverlayStrip extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) entity!: HassEntity;
-  /** When true, hide the pencil and never show duration chips (dashboard card mode). */
-  @property({ type: Boolean }) hideEdit = false;
-
-  @state() private _editingDuration = false;
 
   static styles = css`
     :host { display: block; }
@@ -44,17 +32,11 @@ export class TadoOverlayStrip extends LitElement {
       padding-top: 12px;
       border-top: 1px solid var(--divider-color);
       margin-top: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
     }
-
-    /* ── Summary row ──────────────────────────── */
 
     .summary-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
     }
 
@@ -74,6 +56,14 @@ export class TadoOverlayStrip extends LitElement {
       flex-shrink: 0;
     }
 
+    .duration-text {
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+
+    .duration-text:hover { color: var(--primary-color); }
+
     .pencil-btn {
       background: none;
       border: none;
@@ -92,37 +82,6 @@ export class TadoOverlayStrip extends LitElement {
       color: inherit;
     }
 
-    /* ── Duration chips ───────────────────────── */
-
-    .change-until-label {
-      font-size: 0.8em;
-      color: var(--secondary-text-color);
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .chip {
-      padding: 5px 12px;
-      border: 1px solid var(--divider-color);
-      border-radius: 16px;
-      background: var(--card-background-color);
-      color: var(--primary-text-color);
-      font-size: 0.82em;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .chip:hover {
-      border-color: var(--primary-color);
-      background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-    }
-
-    /* ── Resume button ────────────────────────── */
-
     .resume-btn {
       display: inline-flex;
       align-items: center;
@@ -137,6 +96,7 @@ export class TadoOverlayStrip extends LitElement {
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
+      margin-left: auto;
     }
 
     .resume-btn:hover { filter: brightness(1.1); }
@@ -156,29 +116,22 @@ export class TadoOverlayStrip extends LitElement {
     return t === "MANUAL" || t === "TIMER" || t === "NEXT_TIME_BLOCK";
   }
 
-  private _resume() {
+  private _resume(e: Event) {
+    e.stopPropagation();
     this.hass.callService("tado", "resume_schedule", {}, {
       entity_id: this.entity.entity_id,
     });
   }
 
-  private _selectChip(chip: typeof DURATION_CHIPS[number]) {
-    const raw = this.entity.attributes.temperature ?? 20;
-    const temp = Math.round(Math.min(25, Math.max(5, raw)) / 0.5) * 0.5;
-    if (chip.minutes !== undefined) {
-      const h = Math.floor(chip.minutes / 60);
-      const m = chip.minutes % 60;
-      this.hass.callService("tado", "set_climate_timer", {
-        time_period: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`,
-        temperature: temp,
-      }, { entity_id: this.entity.entity_id });
-    } else {
-      this.hass.callService("tado", "set_climate_timer", {
-        requested_overlay: chip.overlay,
-        temperature: temp,
-      }, { entity_id: this.entity.entity_id });
-    }
-    this._editingDuration = false;
+  private _openPopupInEditMode(e: Event) {
+    e.stopPropagation();
+    (window as unknown as { __tadoEditOnOpen?: string }).__tadoEditOnOpen =
+      this.entity.entity_id;
+    this.dispatchEvent(new CustomEvent("hass-more-info", {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.entity.entity_id },
+    }));
   }
 
   render() {
@@ -190,31 +143,20 @@ export class TadoOverlayStrip extends LitElement {
 
     return html`
       <div class="strip">
-        ${(!this.hideEdit && this._editingDuration) ? html`
-          <div class="change-until-label">Change until</div>
-          <div class="chips">
-            ${DURATION_CHIPS.map((c) => html`
-              <button class="chip" @click=${() => this._selectChip(c)}>${c.label}</button>
-            `)}
-          </div>
-        ` : html`
-          <div class="summary-row">
-            <div class="remaining">
-              <span class="dot"></span>
-              <span>${label}</span>
-              ${!this.hideEdit ? html`
-                <button class="pencil-btn" title="Change duration"
-                  @click=${() => { this._editingDuration = true; }}>
-                  <ha-icon .icon=${"mdi:pencil"}></ha-icon>
-                </button>
-              ` : nothing}
-            </div>
-            <button class="resume-btn" @click=${this._resume}>
-              <ha-icon .icon=${"mdi:restore"}></ha-icon>
-              Resume schedule
+        <div class="summary-row">
+          <div class="remaining">
+            <span class="dot"></span>
+            <span class="duration-text" @click=${this._openPopupInEditMode}>${label}</span>
+            <button class="pencil-btn" title="Edit duration"
+              @click=${this._openPopupInEditMode}>
+              <ha-icon .icon=${"mdi:pencil"}></ha-icon>
             </button>
           </div>
-        `}
+          <button class="resume-btn" @click=${this._resume}>
+            <ha-icon .icon=${"mdi:restore"}></ha-icon>
+            Resume schedule
+          </button>
+        </div>
       </div>
     `;
   }

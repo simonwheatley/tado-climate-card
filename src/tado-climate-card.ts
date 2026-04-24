@@ -1,7 +1,8 @@
-import { LitElement, html, css, nothing } from "lit";
+import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TadoCardConfig } from "./types.js";
 import { sliderColor } from "./slider-color.js";
+import { radiatorIconProps } from "./heating-color.js";
 import "./tado-overlay-strip.js";
 
 const STEP = 0.5;
@@ -34,12 +35,7 @@ export class TadoClimateCard extends LitElement {
 
     ha-icon {
       --mdc-icon-size: 22px;
-      color: var(--state-climate-heat-color, #e45e65);
       flex-shrink: 0;
-    }
-
-    ha-icon.idle {
-      color: var(--disabled-color, #9da0a2);
     }
 
     .name {
@@ -122,8 +118,27 @@ export class TadoClimateCard extends LitElement {
   }
 
   private _onSliderChanged(e: CustomEvent<{ value: number }>) {
-    this._liveValue = null; // snap back to entity-driven value
-    this._applySliderValue(e.detail.value);
+    const raw = e.detail.value;
+    // Optimistic: keep _liveValue at the committed (snapped) value so the
+    // label updates immediately. It is cleared in updated() once the entity
+    // state catches up with what we just sent.
+    const snapped = raw === 0
+      ? 0
+      : Math.round(Math.min(MAX_TEMP, Math.max(MIN_TEMP, raw)) / STEP) * STEP;
+    this._liveValue = snapped;
+    this._applySliderValue(raw);
+  }
+
+  override updated(_changed: Map<string, unknown>) {
+    if (this._liveValue === null) return;
+    const entity = this._entity;
+    if (!entity) return;
+    const entityVal = entity.state === "off"
+      ? 0
+      : (entity.attributes.temperature ?? 20);
+    if (Math.abs(entityVal - this._liveValue) < 0.01) {
+      this._liveValue = null;
+    }
   }
 
   render() {
@@ -136,24 +151,24 @@ export class TadoClimateCard extends LitElement {
     const currentTemp = entity.attributes.current_temperature;
     const isOff = entity.state === "off";
     const targetTemp = entity.attributes.temperature ?? 20;
-    const sliderValue = isOff ? 0 : targetTemp;
-    const colorValue = this._liveValue ?? sliderValue;
-    const isHeating = entity.attributes.hvac_action === "heating";
-    const icon = isHeating ? "mdi:radiator" : "mdi:radiator-disabled";
+    const entityValue = isOff ? 0 : targetTemp;
+    const sliderValue = this._liveValue ?? entityValue;
+    const colorValue = sliderValue;
+    const { icon, color: iconColor } = radiatorIconProps(this.hass, entity);
 
     return html`
       <ha-card @click=${this._handleCardClick}>
         <div class="header">
           <ha-icon
             .icon=${icon}
-            class=${isHeating ? "" : "idle"}
+            style="color:${iconColor}"
           ></ha-icon>
           <span class="name">${name}</span>
         </div>
 
         <div class="temp-info">
           <span class="inside-now">Inside now ${currentTemp?.toFixed(1) ?? "--"}°</span>
-          <span class="target-temp-label">${colorValue < 5 ? "Off" : `${targetTemp.toFixed(1)}°`}</span>
+          <span class="target-temp-label">${sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`}</span>
         </div>
 
         <div class="slider-row" @click=${(e: Event) => e.stopPropagation()}>
@@ -176,7 +191,6 @@ export class TadoClimateCard extends LitElement {
           <tado-overlay-strip
             .hass=${this.hass}
             .entity=${entity}
-            .hideEdit=${true}
           ></tado-overlay-strip>
         </div>
       </ha-card>

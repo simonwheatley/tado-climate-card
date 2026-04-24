@@ -33,10 +33,10 @@ describe("tado-overlay-strip — label rendering", () => {
     expect(el.shadowRoot!.textContent).toContain("Until you resume schedule");
   });
 
-  it("shows 'Until next block' for NEXT_TIME_BLOCK override", async () => {
+  it("shows 'Until next time block' for NEXT_TIME_BLOCK override", async () => {
     const el = await mountStrip("NEXT_TIME_BLOCK");
     elements.push(el);
-    expect(el.shadowRoot!.textContent).toContain("Until next block");
+    expect(el.shadowRoot!.textContent).toContain("Until next time block");
   });
 
   it("shows time remaining for a TIMER override", async () => {

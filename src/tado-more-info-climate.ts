@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TerminationType } from "./types.js";
 import { sliderColor } from "./slider-color.js";
+import { radiatorIconProps } from "./heating-color.js";
 
 const STEP = 0.5;
 const SLIDER_MIN = 0; // 0 = Off
@@ -19,17 +20,20 @@ interface DurationOption {
 }
 
 const DURATIONS: DurationOption[] = [
-  { key: "TIMER_30",       label: "30m",        summary: "For 30m",                  minutes: 30 },
-  { key: "TIMER_60",       label: "1h",         summary: "For 1h",                   minutes: 60 },
-  { key: "TIMER_120",      label: "2h",         summary: "For 2h",                   minutes: 120 },
-  { key: "NEXT_TIME_BLOCK",label: "Next block",  summary: "Until next block",         overlay: "NEXT_TIME_BLOCK" },
-  { key: "MANUAL",         label: "∞",          summary: "Until you resume schedule", overlay: "MANUAL" },
+  { key: "TIMER_30",        label: "30m",             summary: "For 30 minutes",              minutes: 30 },
+  { key: "TIMER_60",        label: "1h",              summary: "For 1 hour",                  minutes: 60 },
+  { key: "TIMER_120",       label: "2h",              summary: "For 2 hours",                 minutes: 120 },
+  { key: "NEXT_TIME_BLOCK", label: "Next time block", summary: "Until next time block",       overlay: "NEXT_TIME_BLOCK" },
+  { key: "MANUAL",          label: "∞",               summary: "Until you resume schedule",   overlay: "MANUAL" },
 ];
+
+// Persists across popup opens within the session
+let _lastUsedDuration: DurationKey | null = null;
 
 function terminationToKey(type: TerminationType): DurationKey | null {
   if (type === "NEXT_TIME_BLOCK") return "NEXT_TIME_BLOCK";
   if (type === "MANUAL") return "MANUAL";
-  if (type === "TIMER") return "TIMER_60"; // best guess; real value needs duration lookup
+  if (type === "TIMER") return _lastUsedDuration ?? "TIMER_60";
   return null;
 }
 
@@ -41,7 +45,7 @@ function isTadoEntity(entity: HassEntity): boolean {
 }
 
 function displayValue(value: number): string {
-  return value < 5 ? "Off" : `${value.toFixed(1)}°`;
+  return value < MIN_TEMP ? "Off" : `${value.toFixed(1)}°`;
 }
 
 @customElement("tado-more-info-climate")
@@ -49,13 +53,11 @@ export class TadoMoreInfoClimate extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) stateObj!: HassEntity;
 
-  // Live drag value — updated every frame by slider-moved
+  /** Live drag value — updated every frame by slider-moved */
   @state() private _pendingValue: number | null = null;
-  // True once user has moved the slider (show duration section)
-  @state() private _sliderDirty = false;
-  // Which duration chip was last committed
+  /** Which duration is currently committed (from entity or user selection) */
   @state() private _selectedDuration: DurationKey | null = null;
-  // True when pencil was tapped (re-show chips)
+  /** True when pencil was tapped — show chips instead of summary */
   @state() private _editingDuration = false;
 
   private _lastEntityId: string | null = null;
@@ -68,15 +70,19 @@ export class TadoMoreInfoClimate extends LitElement {
         this._pendingValue = null;
         this._editingDuration = false;
 
-        // Pre-load existing override into Committed state
+        // Pre-load existing override into committed state
         const type = this.stateObj.attributes.HA_TERMINATION_TYPE;
-        if (type) {
-          const key = terminationToKey(type);
-          this._selectedDuration = key;
-          this._sliderDirty = !!key;
+        if (type && type !== "TADO_MODE") {
+          this._selectedDuration = terminationToKey(type);
         } else {
           this._selectedDuration = null;
-          this._sliderDirty = false;
+        }
+
+        // Honour the "open in edit mode" flag set by the dashboard card strip.
+        const win = window as unknown as { __tadoEditOnOpen?: string };
+        if (win.__tadoEditOnOpen === this.stateObj.entity_id) {
+          this._editingDuration = true;
+          delete win.__tadoEditOnOpen;
         }
       }
     }
@@ -97,12 +103,7 @@ export class TadoMoreInfoClimate extends LitElement {
 
     ha-icon {
       --mdc-icon-size: 24px;
-      color: var(--state-climate-heat-color, #e45e65);
       flex-shrink: 0;
-    }
-
-    ha-icon.idle {
-      color: var(--disabled-color, #9da0a2);
     }
 
     .name {
@@ -179,20 +180,24 @@ export class TadoMoreInfoClimate extends LitElement {
       background: color-mix(in srgb, var(--primary-color) 10%, transparent);
     }
 
-    /* ── Committed state ──────────────────────────────────── */
+    /* ── Committed row (timer + pencil + resume in one line) ─ */
 
-    .duration-summary-row {
+    .duration-committed-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
+      gap: 6px;
     }
 
     .duration-text {
-      font-size: 0.9em;
-      font-weight: 500;
+      font-size: 0.85em;
       color: var(--primary-text-color);
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 2px 4px;
     }
+
+    .duration-text:hover { color: var(--primary-color); }
 
     .pencil-btn {
       background: none;
@@ -203,6 +208,7 @@ export class TadoMoreInfoClimate extends LitElement {
       align-items: center;
       color: var(--secondary-text-color);
       border-radius: 4px;
+      flex-shrink: 0;
     }
 
     .pencil-btn:hover {
@@ -216,20 +222,20 @@ export class TadoMoreInfoClimate extends LitElement {
     }
 
     .resume-btn {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      padding: 9px 16px;
+      gap: 5px;
+      padding: 6px 14px;
       border: none;
-      border-radius: 20px;
+      border-radius: 16px;
       background: var(--primary-color);
       color: var(--text-primary-color);
-      font-size: 0.85em;
+      font-size: 0.82em;
       font-weight: 500;
       cursor: pointer;
-      box-sizing: border-box;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-left: auto;
     }
 
     .resume-btn:hover {
@@ -237,55 +243,14 @@ export class TadoMoreInfoClimate extends LitElement {
     }
 
     .resume-btn ha-icon {
-      --mdc-icon-size: 18px;
+      --mdc-icon-size: 15px;
       color: inherit;
     }
   `;
 
-  // ── Event handlers ────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────
 
-  private _onSliderMoved(e: CustomEvent<{ value?: number }>) {
-    if (e.detail.value === undefined) return;
-    this._pendingValue = e.detail.value;
-    if (!this._sliderDirty) {
-      this._sliderDirty = true;
-      this._selectedDuration = null;
-      this._editingDuration = false;
-    } else if (this._selectedDuration) {
-      // Slider moved again after committing — require new duration selection
-      this._selectedDuration = null;
-      this._editingDuration = false;
-    }
-  }
-
-  private _onSliderChanged(e: CustomEvent<{ value: number }>) {
-    const value = e.detail.value;
-    this._pendingValue = value;
-
-    if (value === 0) {
-      // Turning off — commit immediately, no duration needed
-      this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "off" }, {
-        entity_id: this.stateObj.entity_id,
-      });
-      this._sliderDirty = false;
-      this._selectedDuration = null;
-      this._pendingValue = null;
-    } else {
-      this._sliderDirty = true;
-      this._selectedDuration = null;
-      this._editingDuration = false;
-    }
-  }
-
-  private _selectDuration(option: DurationOption) {
-    this._selectedDuration = option.key;
-    this._editingDuration = false;
-
-    const temp = Math.round(
-      Math.min(MAX_TEMP, Math.max(MIN_TEMP, this._pendingValue ?? this.stateObj.attributes.temperature ?? 20))
-      / STEP
-    ) * STEP;
-
+  private _applyDuration(option: DurationOption, temp: number) {
     if (option.minutes !== undefined) {
       const h = Math.floor(option.minutes / 60);
       const m = option.minutes % 60;
@@ -301,22 +266,71 @@ export class TadoMoreInfoClimate extends LitElement {
     }
   }
 
+  // ── Event handlers ────────────────────────────────────────
+
+  private _onSliderMoved(e: CustomEvent<{ value?: number }>) {
+    if (e.detail.value !== undefined) this._pendingValue = e.detail.value;
+  }
+
+  private _onSliderChanged(e: CustomEvent<{ value: number }>) {
+    const value = e.detail.value;
+    this._pendingValue = value;
+
+    if (value === 0) {
+      // Turning off — call off service and show duration chips
+      this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "off" }, {
+        entity_id: this.stateObj.entity_id,
+      });
+      this._selectedDuration = null;
+      this._editingDuration = true;
+    } else {
+      // Immediately apply with last-used duration, or default to NEXT_TIME_BLOCK
+      const snap = Math.round(Math.min(MAX_TEMP, Math.max(MIN_TEMP, value)) / STEP) * STEP;
+      this._pendingValue = snap;
+      const durationKey: DurationKey =
+        _lastUsedDuration ?? this._selectedDuration ?? "NEXT_TIME_BLOCK";
+      const opt = DURATIONS.find((d) => d.key === durationKey)!;
+      this._applyDuration(opt, snap);
+      this._selectedDuration = durationKey;
+      this._editingDuration = false;
+
+      // Turn heat on if currently off
+      if (this.stateObj.state === "off") {
+        this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "heat" }, {
+          entity_id: this.stateObj.entity_id,
+        });
+      }
+    }
+  }
+
+  private _selectDuration(option: DurationOption) {
+    _lastUsedDuration = option.key;
+    this._selectedDuration = option.key;
+    this._editingDuration = false;
+
+    const temp = Math.round(
+      Math.min(MAX_TEMP, Math.max(MIN_TEMP,
+        this._pendingValue ?? this.stateObj.attributes.temperature ?? 20))
+      / STEP
+    ) * STEP;
+
+    this._applyDuration(option, temp);
+  }
+
   private _resume() {
     this.hass.callService("tado", "resume_schedule", {}, {
       entity_id: this.stateObj.entity_id,
     });
-    this._sliderDirty = false;
     this._selectedDuration = null;
+    this._editingDuration = false;
     this._pendingValue = null;
   }
 
   // ── Duration section renderer ─────────────────────────────
 
   private _renderDurationSection() {
-    if (!this._sliderDirty) return nothing;
-
-    // Chips visible when no duration chosen yet, or pencil was tapped
-    if (!this._selectedDuration || this._editingDuration) {
+    // Chip picker — no resume button shown
+    if (this._editingDuration || (this._selectedDuration === null && this._pendingValue !== null)) {
       return html`
         <div class="duration-section">
           <div class="change-until-label">Change until</div>
@@ -331,23 +345,30 @@ export class TadoMoreInfoClimate extends LitElement {
       `;
     }
 
-    // Committed — show summary + pencil + resume
-    const selected = DURATIONS.find((d) => d.key === this._selectedDuration)!;
-    return html`
-      <div class="duration-section">
-        <div class="duration-summary-row">
-          <span class="duration-text">${selected.summary}</span>
-          <button class="pencil-btn" title="Edit duration"
-            @click=${() => { this._editingDuration = true; }}>
-            <ha-icon .icon=${"mdi:pencil"}></ha-icon>
-          </button>
+    // Committed — single row: timer text · pencil · resume
+    if (this._selectedDuration) {
+      const selected = DURATIONS.find((d) => d.key === this._selectedDuration)!;
+      return html`
+        <div class="duration-section">
+          <div class="duration-committed-row">
+            <span class="duration-text"
+              @click=${() => { this._editingDuration = true; }}>
+              ${selected.summary}
+            </span>
+            <button class="pencil-btn" title="Edit duration"
+              @click=${() => { this._editingDuration = true; }}>
+              <ha-icon .icon=${"mdi:pencil"}></ha-icon>
+            </button>
+            <button class="resume-btn" @click=${this._resume}>
+              <ha-icon .icon=${"mdi:restore"}></ha-icon>
+              Resume schedule
+            </button>
+          </div>
         </div>
-        <button class="resume-btn" @click=${this._resume}>
-          <ha-icon .icon=${"mdi:restore"}></ha-icon>
-          Resume schedule
-        </button>
-      </div>
-    `;
+      `;
+    }
+
+    return nothing;
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -360,13 +381,13 @@ export class TadoMoreInfoClimate extends LitElement {
     const isOff = entity.state === "off";
     const targetTemp = entity.attributes.temperature ?? 20;
     const liveValue = this._pendingValue ?? (isOff ? 0 : targetTemp);
-    const isHeating = entity.attributes.hvac_action === "heating";
+    const { icon, color: iconColor } = radiatorIconProps(this.hass, entity);
 
     return html`
       <div class="header">
         <ha-icon
-          .icon=${isHeating ? "mdi:radiator" : "mdi:radiator-disabled"}
-          class=${isHeating ? "" : "idle"}
+          .icon=${icon}
+          style="color:${iconColor}"
         ></ha-icon>
         <span class="name">${entity.attributes.friendly_name}</span>
       </div>
