@@ -70,14 +70,19 @@ export class TadoOverlayStrip extends LitElement {
       font-family: inherit;
     }
 
-    .duration-edit-btn:hover {
+    .duration-edit-btn:hover,
+    .duration-edit-btn:hover ha-icon {
       color: var(--primary-color);
-      background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    }
+
+    .duration-edit-btn:hover {
+      background: color-mix(in srgb, var(--primary-color) 18%, transparent);
     }
 
     .duration-edit-btn ha-icon {
       --mdc-icon-size: 15px;
       color: inherit;
+      pointer-events: none;
     }
 
     .resume-btn {
