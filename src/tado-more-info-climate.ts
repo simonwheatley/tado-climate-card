@@ -449,7 +449,9 @@ export class TadoMoreInfoClimate extends LitElement {
   }
 
   private _resume() {
-    this.hass.callService("tado", "resume_schedule", {}, {
+    // climate.set_hvac_mode: auto resumes the smart schedule on stock HA —
+    // see tado-overlay-strip.ts for rationale.
+    this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "auto" }, {
       entity_id: this.stateObj.entity_id,
     });
     this._selectedDuration = null;

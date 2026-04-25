@@ -781,9 +781,14 @@ let TadoOverlayStrip = class extends i {
   }
   // Stop click from bubbling to the card (which would open the popup)
   // so that Resume Schedule is a direct action.
+  //
+  // We call `climate.set_hvac_mode: auto` rather than a Tado-specific
+  // service: the stock Tado integration maps HVACMode.AUTO to its internal
+  // SMART_SCHEDULE, which resets the zone overlay. This keeps the card
+  // functional on a vanilla HA install with no integration patching.
   _resume(e2) {
     e2.stopPropagation();
-    this.hass.callService("tado", "resume_schedule", {}, {
+    this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "auto" }, {
       entity_id: this.entity.entity_id
     });
   }
@@ -1256,7 +1261,7 @@ let TadoMoreInfoClimate = class extends i {
     this._applyDuration(option, temp);
   }
   _resume() {
-    this.hass.callService("tado", "resume_schedule", {}, {
+    this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "auto" }, {
       entity_id: this.stateObj.entity_id
     });
     this._selectedDuration = null;

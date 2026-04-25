@@ -44,17 +44,20 @@ slider commits inside the popup.
    The more-info patch applies automatically to all climate entities
    whose attributes look Tado-shaped.
 
-## Forked integration
+## No integration patch required
 
-This repo also ships a fork of Home Assistant's built-in `tado`
-integration in `ha-dev/config/custom_components/tado/`, used for local
-development. It adds a `tado.resume_schedule` service that cancels an
-active overlay and returns the zone to its smart schedule — wired to
-the Resume button in the card.
+The Resume button calls `climate.set_hvac_mode: auto`, which the stock
+Home Assistant Tado integration maps to "resume smart schedule" by
+resetting the zone overlay. The card therefore works on any HA install
+with the built-in Tado integration — no `custom_components/` patching
+needed.
 
-If you want the Resume button to work on your live instance, copy
-`ha-dev/config/custom_components/tado/` to your `config/custom_components/`.
-HA will use the custom version in preference to the built-in one.
+This repo does ship a fork of HA's built-in `tado` integration in
+`ha-dev/config/custom_components/tado/`. It exists for two reasons:
+local development against the integration's source, and as the basis
+for an upstream contribution that adds a `tado.resume_schedule`
+service. The card no longer depends on that service; it's just a
+clearer name for what the stock `set_hvac_mode: auto` already does.
 
 ## Development
 
