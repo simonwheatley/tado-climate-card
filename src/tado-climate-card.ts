@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TadoCardConfig } from "./types.js";
 import { sliderColor } from "./slider-color.js";
 import { radiatorIconProps } from "./heating-color.js";
+import { setAppliedOverlay } from "./user-prefs.js";
 import "./tado-overlay-strip.js";
 
 const STEP = 0.5;
@@ -15,6 +16,10 @@ export class TadoClimateCard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @state() private _config!: TadoCardConfig;
   @state() private _liveValue: number | null = null;
+  /** When set, the next entity update with a fresh termination timestamp
+   *  will be persisted as our NEXT_TIME_BLOCK marker. */
+  private _pendingMark = false;
+  private _preApplyTimestamp: string | undefined;
 
   static styles = css`
     :host {
@@ -105,15 +110,25 @@ export class TadoClimateCard extends LitElement {
   private _applySliderValue(raw: number) {
     const entity = this._entity!;
     if (raw === 0) {
-      // Off position
+      // Off — note: climate.set_hvac_mode has no termination param, so the
+      // resulting overlay duration is whatever the Tado zone default is.
+      // Forcing MANUAL on Off would need an integration-side change.
       this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "off" }, { entity_id: entity.entity_id });
     } else {
-      // Snap anything dragged into the dead zone (0–5) up to MIN_TEMP
+      // Snap anything dragged into the dead zone (0–5) up to MIN_TEMP.
+      // Dashboard temp changes always use NEXT_TIME_BLOCK, regardless of
+      // any stored per-entity preference (preference only applies to
+      // explicit chip picks in the popup).
       const temp = Math.round(Math.min(MAX_TEMP, Math.max(MIN_TEMP, raw)) / STEP) * STEP;
-      this.hass.callService("climate", "set_temperature", { temperature: temp }, { entity_id: entity.entity_id });
-      if (entity.state === "off") {
-        this.hass.callService("climate", "set_hvac_mode", { hvac_mode: "heat" }, { entity_id: entity.entity_id });
-      }
+      this.hass.callService("tado", "set_climate_timer", {
+        requested_overlay: "NEXT_TIME_BLOCK",
+        temperature: temp,
+      }, { entity_id: entity.entity_id });
+      // Mark so we can render "Until next time block" later (the API reports
+      // NEXT_TIME_BLOCK as TIMER). Captured in updated() once the entity
+      // reflects the new overlay.
+      this._pendingMark = true;
+      this._preApplyTimestamp = entity.attributes.HA_TERMINATION_TIMESTAMP;
     }
   }
 
@@ -130,9 +145,26 @@ export class TadoClimateCard extends LitElement {
   }
 
   override updated(_changed: Map<string, unknown>) {
-    if (this._liveValue === null) return;
     const entity = this._entity;
     if (!entity) return;
+
+    // Persist a NEXT_TIME_BLOCK marker once the entity reflects the new
+    // overlay. The Tado API reports NEXT_TIME_BLOCK as TIMER, so we record
+    // the new timestamp as a fingerprint to recognise it on later reads.
+    if (this._pendingMark) {
+      const newTs = entity.attributes.HA_TERMINATION_TIMESTAMP;
+      const rawType = entity.attributes.HA_TERMINATION_TYPE;
+      if (rawType === "TIMER" && newTs && newTs !== this._preApplyTimestamp) {
+        setAppliedOverlay(this.hass, entity.entity_id, {
+          type: "NEXT_TIME_BLOCK",
+          terminationTimestamp: newTs,
+        });
+        this._pendingMark = false;
+        this._preApplyTimestamp = undefined;
+      }
+    }
+
+    if (this._liveValue === null) return;
     const entityVal = entity.state === "off"
       ? 0
       : (entity.attributes.temperature ?? 20);

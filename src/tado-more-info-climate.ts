@@ -3,6 +3,15 @@ import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TerminationType } from "./types.js";
 import { sliderColor } from "./slider-color.js";
 import { radiatorIconProps } from "./heating-color.js";
+import {
+  getDurationPref,
+  setDurationPref,
+  getAppliedOverlay,
+  setAppliedOverlay,
+  effectiveTermination,
+  type AppliedOverlay,
+  type AppliedOverlayType,
+} from "./user-prefs.js";
 
 const STEP = 0.5;
 const SLIDER_MIN = 0; // 0 = Off
@@ -27,13 +36,22 @@ const DURATIONS: DurationOption[] = [
   { key: "MANUAL",          label: "∞",               summary: "Until you resume schedule",   overlay: "MANUAL" },
 ];
 
-// Persists across popup opens within the session
-let _lastUsedDuration: DurationKey | null = null;
+const DEFAULT_DURATION: DurationKey = "NEXT_TIME_BLOCK";
 
-function terminationToKey(type: TerminationType): DurationKey | null {
+function isDurationKey(s: string | null): s is DurationKey {
+  return s === "TIMER_30" || s === "TIMER_60" || s === "TIMER_120"
+      || s === "NEXT_TIME_BLOCK" || s === "MANUAL";
+}
+
+function terminationToKey(type: TerminationType, prefKey: DurationKey | null): DurationKey | null {
   if (type === "NEXT_TIME_BLOCK") return "NEXT_TIME_BLOCK";
   if (type === "MANUAL") return "MANUAL";
-  if (type === "TIMER") return _lastUsedDuration ?? "TIMER_60";
+  if (type === "TIMER") {
+    // Active TIMER override — we don't know its original duration, so prefer
+    // the user's stored preference (if it's a TIMER_*) else default to 1h.
+    if (prefKey === "TIMER_30" || prefKey === "TIMER_60" || prefKey === "TIMER_120") return prefKey;
+    return "TIMER_60";
+  }
   return null;
 }
 
@@ -59,27 +77,91 @@ export class TadoMoreInfoClimate extends LitElement {
   @state() private _selectedDuration: DurationKey | null = null;
   /** True when pencil was tapped — show chips instead of summary */
   @state() private _editingDuration = false;
+  /** User's stored preference for this entity (loaded async) */
+  @state() private _prefDuration: DurationKey | null = null;
+  /** Stored marker for the last NEXT_TIME_BLOCK overlay we applied */
+  @state() private _marker: AppliedOverlay | null = null;
 
   private _lastEntityId: string | null = null;
+  /** Set when we apply an overlay whose effective type is hidden by the API
+   *  (NEXT_TIME_BLOCK). Cleared once `updated()` captures the new entity
+   *  timestamp and persists the marker. */
+  private _pendingMarkType: AppliedOverlayType | null = null;
+  private _preApplyTimestamp: string | undefined;
+
+  /** Apply marker substitution: if a NEXT_TIME_BLOCK marker matches the
+   *  entity's current timestamp, treat the overlay as NEXT_TIME_BLOCK. */
+  private _effectiveType(): TerminationType {
+    const raw = this.stateObj.attributes.HA_TERMINATION_TYPE;
+    const ts = this.stateObj.attributes.HA_TERMINATION_TIMESTAMP;
+    return effectiveTermination(raw, ts, this._marker) as TerminationType;
+  }
+
+  /** Recompute `_selectedDuration` from current entity state + loaded prefs. */
+  private _resyncSelectedDuration() {
+    const type = this._effectiveType();
+    if (type && type !== "TADO_MODE") {
+      this._selectedDuration = terminationToKey(type, this._prefDuration);
+    } else {
+      this._selectedDuration = null;
+    }
+  }
 
   // Re-initialise state whenever a different entity opens in the popup
   override updated(changed: Map<string, unknown>) {
     if (changed.has("stateObj") && this.stateObj) {
+      // Capture timestamp for any pending marker
+      if (this._pendingMarkType) {
+        const newTs = this.stateObj.attributes.HA_TERMINATION_TIMESTAMP;
+        const rawType = this.stateObj.attributes.HA_TERMINATION_TYPE;
+        // Wait for the entity to reflect the new overlay (TIMER for
+        // NEXT_TIME_BLOCK, MANUAL for MANUAL) and a different timestamp.
+        const looksApplied =
+          (this._pendingMarkType === "NEXT_TIME_BLOCK" && rawType === "TIMER") ||
+          (this._pendingMarkType === "MANUAL" && rawType === "MANUAL");
+        if (looksApplied && newTs !== this._preApplyTimestamp) {
+          const marker: AppliedOverlay = {
+            type: this._pendingMarkType,
+            terminationTimestamp: newTs ?? null,
+          };
+          this._marker = marker;
+          setAppliedOverlay(this.hass, this.stateObj.entity_id, marker);
+          this._pendingMarkType = null;
+          this._preApplyTimestamp = undefined;
+          this._resyncSelectedDuration();
+        }
+      }
+
       if (this.stateObj.entity_id !== this._lastEntityId) {
         this._lastEntityId = this.stateObj.entity_id;
         this._pendingValue = null;
         this._editingDuration = false;
+        this._prefDuration = null;
+        this._marker = null;
 
-        // Pre-load existing override into committed state
-        const type = this.stateObj.attributes.HA_TERMINATION_TYPE;
-        if (type && type !== "TADO_MODE") {
-          this._selectedDuration = terminationToKey(type);
-        } else {
-          this._selectedDuration = null;
-        }
+        const entityId = this.stateObj.entity_id;
 
+        // Load pref + applied-overlay marker in parallel, then resync display
+        Promise.all([
+          getDurationPref(this.hass, entityId),
+          getAppliedOverlay(this.hass, entityId),
+        ]).then(([storedPref, storedMarker]) => {
+          if (this._lastEntityId !== entityId) return; // raced
+          this._prefDuration = isDurationKey(storedPref) ? storedPref : null;
+          this._marker = storedMarker;
+          this._resyncSelectedDuration();
+        });
+
+        // Best-effort sync read using stale (or null) marker / pref —
+        // overwritten once async loads resolve above.
+        this._resyncSelectedDuration();
       }
     }
+  }
+
+  /** Chip to highlight: active termination wins; else stored pref; else default. */
+  private get _highlightedDuration(): DurationKey {
+    return this._selectedDuration ?? this._prefDuration ?? DEFAULT_DURATION;
   }
 
   static styles = css`
@@ -201,6 +283,13 @@ export class TadoMoreInfoClimate extends LitElement {
       background: color-mix(in srgb, var(--primary-color) 10%, transparent);
     }
 
+    .chip.default {
+      border-color: var(--primary-color);
+      background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+      color: var(--primary-color);
+      font-weight: 500;
+    }
+
     /* ── Committed row (timer + pencil + resume in one line) ─ */
 
     .duration-committed-row {
@@ -209,34 +298,41 @@ export class TadoMoreInfoClimate extends LitElement {
       gap: 6px;
     }
 
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--warning-color, #f4b400);
+      flex-shrink: 0;
+    }
+
     .duration-edit-btn {
       display: inline-flex;
       align-items: center;
-      gap: 3px;
+      gap: 6px;
       background: none;
       border: none;
-      padding: 4px 6px;
+      padding: 0;
       cursor: pointer;
-      border-radius: 4px;
       font-size: 0.85em;
       font-weight: 500;
       color: var(--primary-text-color);
       font-family: inherit;
     }
 
-    .duration-edit-btn:hover,
-    .duration-edit-btn:hover ha-icon {
-      color: var(--primary-color);
-    }
-
-    .duration-edit-btn:hover {
-      background: color-mix(in srgb, var(--primary-color) 18%, transparent);
-    }
-
     .duration-edit-btn ha-icon {
       --mdc-icon-size: 16px;
-      color: inherit;
+      color: var(--secondary-text-color);
       pointer-events: none;
+      padding: 4px;
+      border-radius: 50%;
+      box-sizing: content-box;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .duration-edit-btn:hover ha-icon {
+      color: var(--primary-color);
+      background: color-mix(in srgb, var(--primary-color) 18%, transparent);
     }
 
     .resume-btn {
@@ -276,11 +372,19 @@ export class TadoMoreInfoClimate extends LitElement {
         time_period: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`,
         temperature: temp,
       }, { entity_id: this.stateObj.entity_id });
+      // Real TIMER overlay — entity will report TIMER faithfully, no marker.
     } else {
       this.hass.callService("tado", "set_climate_timer", {
         requested_overlay: option.overlay,
         temperature: temp,
       }, { entity_id: this.stateObj.entity_id });
+      // NEXT_TIME_BLOCK is reported as TIMER by the API — mark so we can
+      // render it correctly on next open. (MANUAL is reported faithfully but
+      // we still capture for symmetry; harmless.)
+      if (option.overlay) {
+        this._pendingMarkType = option.overlay;
+        this._preApplyTimestamp = this.stateObj.attributes.HA_TERMINATION_TIMESTAMP;
+      }
     }
   }
 
@@ -302,11 +406,15 @@ export class TadoMoreInfoClimate extends LitElement {
       this._selectedDuration = null;
       this._editingDuration = true;
     } else {
-      // Immediately apply with last-used duration, or default to NEXT_TIME_BLOCK
+      // Slider commit treats this as the start of a fresh override: use the
+      // user's preference (or default), ignoring whatever termination the
+      // previous override happened to have. The chip-picker highlight rule
+      // (active-termination-wins) still applies for *display*; this only
+      // governs what gets *committed* when the user moves the slider.
       const snap = Math.round(Math.min(MAX_TEMP, Math.max(MIN_TEMP, value)) / STEP) * STEP;
       this._pendingValue = snap;
       const durationKey: DurationKey =
-        _lastUsedDuration ?? this._selectedDuration ?? "NEXT_TIME_BLOCK";
+        this._prefDuration ?? DEFAULT_DURATION;
       const opt = DURATIONS.find((d) => d.key === durationKey)!;
       this._applyDuration(opt, snap);
       this._selectedDuration = durationKey;
@@ -324,7 +432,10 @@ export class TadoMoreInfoClimate extends LitElement {
   }
 
   private _selectDuration(option: DurationOption) {
-    _lastUsedDuration = option.key;
+    // Persist as the user's preference for this entity (cross-device, per-user)
+    this._prefDuration = option.key;
+    setDurationPref(this.hass, this.stateObj.entity_id, option.key);
+
     this._selectedDuration = option.key;
     this._editingDuration = false;
 
@@ -362,7 +473,10 @@ export class TadoMoreInfoClimate extends LitElement {
           </div>
           <div class="chips">
             ${DURATIONS.map((opt) => html`
-              <button class="chip" @click=${() => this._selectDuration(opt)}>
+              <button
+                class="chip ${opt.key === this._highlightedDuration ? "default" : ""}"
+                @click=${() => this._selectDuration(opt)}
+              >
                 ${opt.label}
               </button>
             `)}
@@ -379,6 +493,7 @@ export class TadoMoreInfoClimate extends LitElement {
           <div class="duration-committed-row">
             <button class="duration-edit-btn" title="Edit duration"
               @click=${() => { this._editingDuration = true; }}>
+              <span class="dot"></span>
               <span>${selected.summary}</span>
               <ha-icon .icon=${"mdi:pencil"}></ha-icon>
             </button>

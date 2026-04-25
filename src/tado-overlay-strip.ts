@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TerminationType } from "./types.js";
+import { getAppliedOverlay, effectiveTermination, type AppliedOverlay } from "./user-prefs.js";
 
 function remainingLabel(type: TerminationType, timestamp?: string): string {
   switch (type) {
@@ -24,6 +25,19 @@ function remainingLabel(type: TerminationType, timestamp?: string): string {
 export class TadoOverlayStrip extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) entity!: HassEntity;
+  @state() private _marker: AppliedOverlay | null = null;
+  private _lastEntityId: string | null = null;
+
+  override updated(changed: Map<string, unknown>) {
+    if (changed.has("entity") && this.entity?.entity_id !== this._lastEntityId) {
+      this._lastEntityId = this.entity.entity_id;
+      this._marker = null;
+      const entityId = this.entity.entity_id;
+      getAppliedOverlay(this.hass, entityId).then((m) => {
+        if (this._lastEntityId === entityId) this._marker = m;
+      });
+    }
+  }
 
   static styles = css`
     :host { display: block; }
@@ -40,14 +54,6 @@ export class TadoOverlayStrip extends LitElement {
       gap: 8px;
     }
 
-    .remaining {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.84em;
-      color: var(--secondary-text-color);
-    }
-
     .dot {
       width: 7px;
       height: 7px;
@@ -56,33 +62,12 @@ export class TadoOverlayStrip extends LitElement {
       flex-shrink: 0;
     }
 
-    .duration-edit-btn {
+    .remaining {
       display: inline-flex;
       align-items: center;
-      gap: 3px;
-      background: none;
-      border: none;
-      padding: 2px 4px;
-      cursor: pointer;
-      border-radius: 4px;
-      font-size: inherit;
-      color: inherit;
-      font-family: inherit;
-    }
-
-    .duration-edit-btn:hover,
-    .duration-edit-btn:hover ha-icon {
-      color: var(--primary-color);
-    }
-
-    .duration-edit-btn:hover {
-      background: color-mix(in srgb, var(--primary-color) 18%, transparent);
-    }
-
-    .duration-edit-btn ha-icon {
-      --mdc-icon-size: 15px;
-      color: inherit;
-      pointer-events: none;
+      gap: 6px;
+      font-size: 0.84em;
+      color: var(--secondary-text-color);
     }
 
     .resume-btn {
@@ -111,7 +96,9 @@ export class TadoOverlayStrip extends LitElement {
   `;
 
   private get _terminationType(): TerminationType | undefined {
-    return this.entity.attributes.HA_TERMINATION_TYPE;
+    const raw = this.entity.attributes.HA_TERMINATION_TYPE;
+    const ts = this.entity.attributes.HA_TERMINATION_TIMESTAMP;
+    return effectiveTermination(raw, ts, this._marker) as TerminationType | undefined;
   }
 
   private get _isOverrideActive(): boolean {
@@ -138,13 +125,10 @@ export class TadoOverlayStrip extends LitElement {
     return html`
       <div class="strip">
         <div class="summary-row">
-          <div class="remaining">
+          <span class="remaining">
             <span class="dot"></span>
-            <button class="duration-edit-btn" title="Edit duration">
-              <span>${label}</span>
-              <ha-icon .icon=${"mdi:pencil"}></ha-icon>
-            </button>
-          </div>
+            <span>${label}</span>
+          </span>
           <button class="resume-btn" @click=${this._resume}>
             <ha-icon .icon=${"mdi:restore"}></ha-icon>
             Resume schedule

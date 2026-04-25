@@ -42,6 +42,9 @@ export interface HomeAssistant {
   formatEntityState(entity: HassEntity): string;
   formatEntityAttributeValue(entity: HassEntity, attribute: string): string;
   locale: { language: string };
+  connection: {
+    sendMessagePromise<T = unknown>(msg: Record<string, unknown>): Promise<T>;
+  };
 }
 
 export interface TadoCardConfig {
