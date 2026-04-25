@@ -195,7 +195,23 @@ export class TadoClimateCard extends LitElement {
   render() {
     const entity = this._entity;
     if (!entity) {
-      return html`<ha-card><div style="padding:16px;color:var(--error-color)">Entity not found: ${this._config?.entity}</div></ha-card>`;
+      // Friendly placeholder when the stub's default entity is still in place
+      // (i.e. user has no Tado zones, or hasn't picked one yet). Otherwise
+      // surface a real "not found" message — this catches typos.
+      const isPlaceholder = this._config?.entity === "climate.YOUR_TADO_ZONE";
+      const message = isPlaceholder
+        ? "Set the entity field to one of your Tado climate zones."
+        : `Entity not found: ${this._config?.entity}`;
+      return html`
+        <ha-card>
+          <div style="padding:16px;color:var(--secondary-text-color);font-size:0.9em">
+            <div style="font-weight:500;color:var(--primary-text-color);margin-bottom:4px">
+              Tado Climate Card
+            </div>
+            ${message}
+          </div>
+        </ha-card>
+      `;
     }
 
     const name = this._config.name ?? entity.attributes.friendly_name;

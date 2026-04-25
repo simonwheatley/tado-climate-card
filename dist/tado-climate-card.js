@@ -979,10 +979,21 @@ let TadoClimateCard = class extends i {
     }
   }
   render() {
-    var _a2;
+    var _a2, _b;
     const entity = this._entity;
     if (!entity) {
-      return b`<ha-card><div style="padding:16px;color:var(--error-color)">Entity not found: ${(_a2 = this._config) == null ? void 0 : _a2.entity}</div></ha-card>`;
+      const isPlaceholder = ((_a2 = this._config) == null ? void 0 : _a2.entity) === "climate.YOUR_TADO_ZONE";
+      const message = isPlaceholder ? "Set the entity field to one of your Tado climate zones." : `Entity not found: ${(_b = this._config) == null ? void 0 : _b.entity}`;
+      return b`
+        <ha-card>
+          <div style="padding:16px;color:var(--secondary-text-color);font-size:0.9em">
+            <div style="font-weight:500;color:var(--primary-text-color);margin-bottom:4px">
+              Tado Climate Card
+            </div>
+            ${message}
+          </div>
+        </ha-card>
+      `;
     }
     const name = this._config.name ?? entity.attributes.friendly_name;
     const currentTemp = entity.attributes.current_temperature;
