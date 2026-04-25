@@ -56,4 +56,72 @@ describe("tado-climate-card", () => {
       expect(() => (orphan as any)._handleCardClick()).not.toThrow();
     });
   });
+
+  describe("integration-extras detection", () => {
+    /** Helper: stock-HA Tado entity (no HA_* attributes). */
+    const stockEntity = {
+      entity_id: "climate.utility",
+      state: "auto",
+      attributes: {
+        friendly_name: "Utility",
+        current_temperature: 16.8,
+        temperature: 16.5,
+        hvac_action: "idle",
+        // Lowercase upstream attribute — present, but not the extras
+        default_overlay_type: "MANUAL",
+        default_overlay_seconds: null,
+      },
+    };
+
+    /** Helper: extras-installed Tado entity (HA_TERMINATION_TYPE present). */
+    const extrasEntity = {
+      ...stockEntity,
+      attributes: {
+        ...stockEntity.attributes,
+        HA_TERMINATION_TYPE: "TADO_MODE",
+      },
+    };
+
+    function makeCard(entity: typeof stockEntity): TadoClimateCard {
+      const card = document.createElement("tado-climate-card") as TadoClimateCard;
+      (card as any).hass = {
+        states: { [entity.entity_id]: entity },
+        callService: vi.fn(),
+      };
+      card.setConfig({ entity: entity.entity_id });
+      document.body.appendChild(card);
+      return card;
+    }
+
+    it("renders an extras-required banner when HA_TERMINATION_TYPE is missing", async () => {
+      const card = makeCard(stockEntity);
+      await (card as any).updateComplete;
+
+      const banner = card.shadowRoot!.querySelector(".extras-required");
+      expect(banner).not.toBeNull();
+      expect(banner!.textContent).toMatch(/Tado Integration Extras/i);
+
+      card.remove();
+    });
+
+    it("includes a HACS deep link to install the extras", async () => {
+      const card = makeCard(stockEntity);
+      await (card as any).updateComplete;
+
+      const link = card.shadowRoot!.querySelector(".extras-required a") as HTMLAnchorElement;
+      expect(link).not.toBeNull();
+      expect(link.href).toContain("hacs");
+      expect(link.href).toContain("tado-integration-extras");
+    });
+
+    it("does NOT render the banner when HA_TERMINATION_TYPE is present", async () => {
+      const card = makeCard(extrasEntity);
+      await (card as any).updateComplete;
+
+      const banner = card.shadowRoot!.querySelector(".extras-required");
+      expect(banner).toBeNull();
+
+      card.remove();
+    });
+  });
 });

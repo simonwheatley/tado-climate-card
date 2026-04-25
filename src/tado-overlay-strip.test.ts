@@ -56,7 +56,10 @@ describe("tado-overlay-strip — label rendering", () => {
 });
 
 describe("tado-overlay-strip — resume button", () => {
-  it("resume button calls tado.resume_schedule", async () => {
+  it("resume button calls climate.set_hvac_mode: auto", async () => {
+    // The card uses the stock climate.set_hvac_mode service (HVACMode.AUTO →
+    // SMART_SCHEDULE → reset_zone_overlay) so it works on stock HA without
+    // requiring the integration-extras fork.
     const callService = vi.fn();
     const el = document.createElement("tado-overlay-strip") as TadoOverlayStrip;
     (el as any).hass = { callService };
@@ -68,7 +71,7 @@ describe("tado-overlay-strip — resume button", () => {
     (el.shadowRoot!.querySelector(".resume-btn") as HTMLElement).click();
 
     expect(callService).toHaveBeenCalledWith(
-      "tado", "resume_schedule", {}, { entity_id: "climate.bedroom" }
+      "climate", "set_hvac_mode", { hvac_mode: "auto" }, { entity_id: "climate.bedroom" }
     );
   });
 });

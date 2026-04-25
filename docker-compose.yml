@@ -4,6 +4,10 @@ services:
     container_name: ha-dev
     volumes:
       - ./ha-dev/config:/config
+      # Mount the integration-extras repo as a custom integration. Lives in
+      # a sibling directory so the two repos can be developed independently;
+      # this overlay makes it visible at /config/custom_components/tado/.
+      - ../tado-integration-extras/custom_components/tado:/config/custom_components/tado:ro
     ports:
       - "8123:8123"
     restart: unless-stopped

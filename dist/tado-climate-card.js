@@ -1003,6 +1003,7 @@ let TadoClimateCard = class extends i {
     const sliderValue = this._liveValue ?? entityValue;
     const colorValue = sliderValue;
     const { icon, color: iconColor } = radiatorIconProps(this.hass, entity);
+    const hasExtras2 = "HA_TERMINATION_TYPE" in entity.attributes;
     return b`
       <ha-card @click=${this._handleCardClick}>
         <div class="header">
@@ -1034,10 +1035,18 @@ let TadoClimateCard = class extends i {
           ></ha-control-slider>
         </div>
 
-        <tado-overlay-strip
-          .hass=${this.hass}
-          .entity=${entity}
-        ></tado-overlay-strip>
+        ${hasExtras2 ? b`<tado-overlay-strip
+              .hass=${this.hass}
+              .entity=${entity}
+            ></tado-overlay-strip>` : b`<div class="extras-required" @click=${(e2) => e2.stopPropagation()}>
+              <strong>Tado Integration Extras required</strong> for override
+              status and the Resume button.
+              <a
+                href="/hacs/repository?owner=simonwheatley&repository=tado-integration-extras&category=integration"
+                target="_top"
+                rel="noopener"
+              >Open in HACS</a>.
+            </div>`}
       </ha-card>
     `;
   }
@@ -1102,6 +1111,30 @@ TadoClimateCard.styles = i$3`
       --control-slider-background-opacity: 0.15;
     }
 
+    .extras-required {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--warning-color, #f4b400) 10%, transparent);
+      font-size: 0.84em;
+      color: var(--secondary-text-color);
+      line-height: 1.4;
+    }
+
+    .extras-required strong {
+      color: var(--primary-text-color);
+      font-weight: 500;
+    }
+
+    .extras-required a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .extras-required a:hover {
+      text-decoration: underline;
+    }
   `;
 __decorateClass$1([
   n2({ attribute: false })
@@ -1150,7 +1183,10 @@ function terminationToKey(type, prefKey) {
   return null;
 }
 function isTadoEntity(entity) {
-  return "HA_DEFAULT_OVERLAY_TYPE" in entity.attributes || "HA_TERMINATION_TYPE" in entity.attributes;
+  return "default_overlay_type" in entity.attributes || "HA_DEFAULT_OVERLAY_TYPE" in entity.attributes || "HA_TERMINATION_TYPE" in entity.attributes;
+}
+function hasExtras(entity) {
+  return "HA_TERMINATION_TYPE" in entity.attributes;
 }
 function displayValue(value) {
   return value < MIN_TEMP ? "Off" : `${value.toFixed(1)}°`;
@@ -1384,7 +1420,15 @@ let TadoMoreInfoClimate = class extends i {
         ></ha-control-slider>
       </div>
 
-      ${this._renderDurationSection()}
+      ${hasExtras(entity) ? this._renderDurationSection() : b`<div class="extras-required">
+            <strong>Tado Integration Extras required</strong> for override
+            status, end-times, and the Resume button.
+            <a
+              href="/hacs/repository?owner=simonwheatley&repository=tado-integration-extras&category=integration"
+              target="_top"
+              rel="noopener"
+            >Open in HACS</a>.
+          </div>`}
     `;
   }
 };
@@ -1449,6 +1493,31 @@ TadoMoreInfoClimate.styles = i$3`
     .duration-section {
       padding-top: 14px;
       border-top: 1px solid var(--divider-color);
+    }
+
+    .extras-required {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--warning-color, #f4b400) 10%, transparent);
+      font-size: 0.9em;
+      color: var(--secondary-text-color);
+      line-height: 1.4;
+    }
+
+    .extras-required strong {
+      color: var(--primary-text-color);
+      font-weight: 500;
+    }
+
+    .extras-required a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .extras-required a:hover {
+      text-decoration: underline;
     }
 
     .change-until-header {

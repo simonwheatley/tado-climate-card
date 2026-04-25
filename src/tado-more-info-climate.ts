@@ -56,10 +56,22 @@ function terminationToKey(type: TerminationType, prefKey: DurationKey | null): D
 }
 
 function isTadoEntity(entity: HassEntity): boolean {
+  // Match index.ts's isTadoStateObj — accept the lowercase stock-HA
+  // attribute as well as the fork-only HA_* attributes, so the popup
+  // still renders on a stock install (with degraded controls).
   return (
+    "default_overlay_type" in entity.attributes ||
     "HA_DEFAULT_OVERLAY_TYPE" in entity.attributes ||
     "HA_TERMINATION_TYPE" in entity.attributes
   );
+}
+
+/** Whether the integration-extras attributes are present (override status,
+ *  termination type, end-time). The popup gates duration controls and the
+ *  Resume button on this; without extras we render the slider only and an
+ *  install banner. */
+function hasExtras(entity: HassEntity): boolean {
+  return "HA_TERMINATION_TYPE" in entity.attributes;
 }
 
 function displayValue(value: number): string {
@@ -225,6 +237,31 @@ export class TadoMoreInfoClimate extends LitElement {
     .duration-section {
       padding-top: 14px;
       border-top: 1px solid var(--divider-color);
+    }
+
+    .extras-required {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--warning-color, #f4b400) 10%, transparent);
+      font-size: 0.9em;
+      color: var(--secondary-text-color);
+      line-height: 1.4;
+    }
+
+    .extras-required strong {
+      color: var(--primary-text-color);
+      font-weight: 500;
+    }
+
+    .extras-required a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .extras-required a:hover {
+      text-decoration: underline;
     }
 
     .change-until-header {
@@ -554,7 +591,17 @@ export class TadoMoreInfoClimate extends LitElement {
         ></ha-control-slider>
       </div>
 
-      ${this._renderDurationSection()}
+      ${hasExtras(entity)
+        ? this._renderDurationSection()
+        : html`<div class="extras-required">
+            <strong>Tado Integration Extras required</strong> for override
+            status, end-times, and the Resume button.
+            <a
+              href="/hacs/repository?owner=simonwheatley&repository=tado-integration-extras&category=integration"
+              target="_top"
+              rel="noopener"
+            >Open in HACS</a>.
+          </div>`}
     `;
   }
 }

@@ -81,6 +81,30 @@ export class TadoClimateCard extends LitElement {
       --control-slider-background-opacity: 0.15;
     }
 
+    .extras-required {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--warning-color, #f4b400) 10%, transparent);
+      font-size: 0.84em;
+      color: var(--secondary-text-color);
+      line-height: 1.4;
+    }
+
+    .extras-required strong {
+      color: var(--primary-text-color);
+      font-weight: 500;
+    }
+
+    .extras-required a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .extras-required a:hover {
+      text-decoration: underline;
+    }
   `;
 
   setConfig(config: TadoCardConfig) {
@@ -222,6 +246,10 @@ export class TadoClimateCard extends LitElement {
     const sliderValue = this._liveValue ?? entityValue;
     const colorValue = sliderValue;
     const { icon, color: iconColor } = radiatorIconProps(this.hass, entity);
+    // The override-status strip and popup duration controls need attributes
+    // only the integration-extras fork exposes (HA_TERMINATION_TYPE etc).
+    // Detect once and surface a banner so users have an actionable next step.
+    const hasExtras = "HA_TERMINATION_TYPE" in entity.attributes;
 
     return html`
       <ha-card @click=${this._handleCardClick}>
@@ -254,10 +282,20 @@ export class TadoClimateCard extends LitElement {
           ></ha-control-slider>
         </div>
 
-        <tado-overlay-strip
-          .hass=${this.hass}
-          .entity=${entity}
-        ></tado-overlay-strip>
+        ${hasExtras
+          ? html`<tado-overlay-strip
+              .hass=${this.hass}
+              .entity=${entity}
+            ></tado-overlay-strip>`
+          : html`<div class="extras-required" @click=${(e: Event) => e.stopPropagation()}>
+              <strong>Tado Integration Extras required</strong> for override
+              status and the Resume button.
+              <a
+                href="/hacs/repository?owner=simonwheatley&repository=tado-integration-extras&category=integration"
+                target="_top"
+                rel="noopener"
+              >Open in HACS</a>.
+            </div>`}
       </ha-card>
     `;
   }
