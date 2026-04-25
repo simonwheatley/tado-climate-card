@@ -1,5 +1,7 @@
 # HA-Tado
 
+![Screenshot of the Tado control in action, showing a popup card over an array of dashboard cards](./screenshot.png)
+
 A Home Assistant custom card and more-info dialog for Tado climate
 zones, with first-class support for schedule overrides ("overlays").
 
