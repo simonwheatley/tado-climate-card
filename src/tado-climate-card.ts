@@ -90,6 +90,20 @@ export class TadoClimateCard extends LitElement {
 
   getCardSize() { return 3; }
 
+  /**
+   * Called by the Lovelace card picker. Returns a sensible default config
+   * pre-filled with the first Tado climate entity we can find.
+   */
+  static getStubConfig(hass: HomeAssistant): Partial<TadoCardConfig> {
+    const tadoEntity = Object.values(hass?.states ?? {}).find(
+      (s) => s.entity_id.startsWith("climate.") && (
+        "HA_TERMINATION_TYPE" in s.attributes ||
+        "HA_DEFAULT_OVERLAY_TYPE" in s.attributes
+      )
+    );
+    return { entity: tadoEntity?.entity_id ?? "climate.YOUR_TADO_ZONE" };
+  }
+
   private get _entity(): HassEntity | undefined {
     return this.hass?.states[this._config?.entity];
   }
