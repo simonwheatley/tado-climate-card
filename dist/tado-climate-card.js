@@ -909,13 +909,18 @@ let TadoClimateCard = class extends i {
   }
   /**
    * Called by the Lovelace card picker. Returns a sensible default config
-   * pre-filled with the first Tado climate entity we can find.
+   * pre-filled with the first Tado climate entity we can find, plus the
+   * `name` field exposed (set to its friendly_name) so users can see it
+   * exists and easily override it.
    */
   static getStubConfig(hass) {
     const tadoEntity = Object.values((hass == null ? void 0 : hass.states) ?? {}).find(
       (s2) => s2.entity_id.startsWith("climate.") && ("HA_TERMINATION_TYPE" in s2.attributes || "HA_DEFAULT_OVERLAY_TYPE" in s2.attributes)
     );
-    return { entity: (tadoEntity == null ? void 0 : tadoEntity.entity_id) ?? "climate.YOUR_TADO_ZONE" };
+    return {
+      entity: (tadoEntity == null ? void 0 : tadoEntity.entity_id) ?? "climate.YOUR_TADO_ZONE",
+      name: (tadoEntity == null ? void 0 : tadoEntity.attributes.friendly_name) ?? "Living room"
+    };
   }
   get _entity() {
     var _a2, _b;
