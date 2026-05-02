@@ -723,16 +723,6 @@ function effectiveTermination(rawType, rawTimestamp, marker) {
   }
   return rawType;
 }
-var __defProp$2 = Object.defineProperty;
-var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
-var __decorateClass$2 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
-  for (var i2 = decorators.length - 1, decorator; i2 >= 0; i2--)
-    if (decorator = decorators[i2])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$2(target, key, result);
-  return result;
-};
 function remainingLabel(type, timestamp) {
   switch (type) {
     case "TIMER": {
@@ -751,8 +741,20 @@ function remainingLabel(type, timestamp) {
       return "Until you resume schedule";
     case "TADO_MODE":
       return "Zone default";
+    default:
+      return "";
   }
 }
+var __defProp$2 = Object.defineProperty;
+var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
+var __decorateClass$2 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
+  for (var i2 = decorators.length - 1, decorator; i2 >= 0; i2--)
+    if (decorator = decorators[i2])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$2(target, key, result);
+  return result;
+};
 let TadoOverlayStrip = class extends i {
   constructor() {
     super(...arguments);
@@ -899,6 +901,8 @@ let TadoClimateCard = class extends i {
     super(...arguments);
     this._liveValue = null;
     this._pendingMark = false;
+    this._marker = null;
+    this._lastEntityId = null;
   }
   setConfig(config) {
     if (!config.entity) throw new Error("entity is required");
@@ -960,6 +964,14 @@ let TadoClimateCard = class extends i {
   updated(_changed) {
     const entity = this._entity;
     if (!entity) return;
+    if (entity.entity_id !== this._lastEntityId) {
+      this._lastEntityId = entity.entity_id;
+      this._marker = null;
+      const id = entity.entity_id;
+      getAppliedOverlay(this.hass, id).then((m2) => {
+        if (this._lastEntityId === id) this._marker = m2;
+      });
+    }
     if (this._pendingMark) {
       const newTs = entity.attributes.HA_TERMINATION_TIMESTAMP;
       const rawType = entity.attributes.HA_TERMINATION_TYPE;
@@ -1004,6 +1016,9 @@ let TadoClimateCard = class extends i {
     const colorValue = sliderValue;
     const { icon, color: iconColor } = radiatorIconProps(this.hass, entity);
     const hasExtras2 = "HA_TERMINATION_TYPE" in entity.attributes;
+    if (this._config.variant === "compact") {
+      return this._renderCompact(entity, name, currentTemp, sliderValue, icon, iconColor, hasExtras2);
+    }
     return b`
       <ha-card @click=${this._handleCardClick}>
         <div class="header">
@@ -1047,6 +1062,38 @@ let TadoClimateCard = class extends i {
                 rel="noopener"
               >Open in HACS</a>.
             </div>`}
+      </ha-card>
+    `;
+  }
+  /**
+   * Compact variant: name + radiator icon, current/target temperature, and
+   * a single termination line ("Until you resume schedule" / timer / "Scheduled").
+   * No slider, no overlay strip — tap-to-popup opens full controls.
+   *
+   * Designed to fit two-up in a mobile dashboard grid; layout uses min-width: 0
+   * everywhere so flex/grid containers won't overflow.
+   */
+  _renderCompact(entity, name, currentTemp, sliderValue, icon, iconColor, hasExtras2) {
+    const rawType = entity.attributes.HA_TERMINATION_TYPE;
+    const ts = entity.attributes.HA_TERMINATION_TIMESTAMP;
+    const effective = effectiveTermination(rawType, ts, this._marker);
+    let terminationText = null;
+    if (hasExtras2) {
+      terminationText = effective === "TADO_MODE" || !effective ? "Scheduled" : remainingLabel(effective, ts);
+    }
+    return b`
+      <ha-card class="compact" @click=${this._handleCardClick}>
+        <div class="compact-header">
+          <ha-icon .icon=${icon} style="color:${iconColor}"></ha-icon>
+          <span class="compact-name">${name}</span>
+        </div>
+        <div class="compact-inside">
+          Inside now ${(currentTemp == null ? void 0 : currentTemp.toFixed(1)) ?? "--"}°
+        </div>
+        <div class="compact-target">
+          ${sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`}
+        </div>
+        ${terminationText ? b`<div class="compact-termination">${terminationText}</div>` : b`<div class="compact-termination compact-termination--blank">&nbsp;</div>`}
       </ha-card>
     `;
   }
@@ -1111,6 +1158,66 @@ TadoClimateCard.styles = i$3`
       --control-slider-background-opacity: 0.15;
     }
 
+    /* ── Compact variant ───────────────────────────────────── */
+
+    ha-card.compact {
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .compact-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      min-width: 0;
+    }
+
+    .compact-header ha-icon {
+      --mdc-icon-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .compact-name {
+      font-size: 0.95em;
+      font-weight: 500;
+      color: var(--primary-text-color);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .compact-inside {
+      font-size: 0.78em;
+      color: var(--secondary-text-color);
+      padding-left: 28px;
+    }
+
+    .compact-target {
+      font-size: 1.5em;
+      font-weight: 300;
+      color: var(--primary-text-color);
+      line-height: 1.1;
+      padding-left: 28px;
+      margin-top: 2px;
+    }
+
+    .compact-termination {
+      font-size: 0.78em;
+      color: var(--secondary-text-color);
+      padding-left: 28px;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .compact-termination--blank {
+      visibility: hidden;
+    }
+
     .extras-required {
       margin-top: 12px;
       padding: 10px 12px;
@@ -1145,6 +1252,9 @@ __decorateClass$1([
 __decorateClass$1([
   r()
 ], TadoClimateCard.prototype, "_liveValue", 2);
+__decorateClass$1([
+  r()
+], TadoClimateCard.prototype, "_marker", 2);
 TadoClimateCard = __decorateClass$1([
   t("tado-climate-card")
 ], TadoClimateCard);

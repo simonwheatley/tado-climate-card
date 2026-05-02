@@ -52,6 +52,10 @@ export interface TadoCardConfig {
   entity: string;
   name?: string;
   show_current_as_primary?: boolean;
+  /** "compact" hides the slider, overlay strip, and Resume button, leaving
+   *  name + radiator icon, current/target temperature, and the override
+   *  termination text. Tap-to-popup opens the full controls. */
+  variant?: "compact";
 }
 
 // ── HA frontend web component type stubs ─────────────────────────────────────

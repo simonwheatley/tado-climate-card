@@ -124,4 +124,106 @@ describe("tado-climate-card", () => {
       card.remove();
     });
   });
+
+  describe("compact variant", () => {
+    const overrideEntity = {
+      entity_id: "climate.bedroom",
+      state: "heat",
+      attributes: {
+        friendly_name: "Bedroom",
+        current_temperature: 20.4,
+        temperature: 19.5,
+        hvac_action: "heating",
+        HA_TERMINATION_TYPE: "MANUAL",
+      },
+    };
+
+    const noOverrideEntity = {
+      ...overrideEntity,
+      attributes: {
+        ...overrideEntity.attributes,
+        HA_TERMINATION_TYPE: "TADO_MODE",
+      },
+    };
+
+    function makeCompact(entity: typeof overrideEntity): TadoClimateCard {
+      const card = document.createElement("tado-climate-card") as TadoClimateCard;
+      (card as any).hass = {
+        states: { [entity.entity_id]: entity },
+        callService: vi.fn(),
+        connection: { sendMessagePromise: vi.fn().mockResolvedValue({ value: null }) },
+      };
+      card.setConfig({ entity: entity.entity_id, variant: "compact" });
+      document.body.appendChild(card);
+      return card;
+    }
+
+    it("does NOT render the slider", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      expect(card.shadowRoot!.querySelector("ha-control-slider")).toBeNull();
+      card.remove();
+    });
+
+    it("does NOT render the overlay strip", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      expect(card.shadowRoot!.querySelector("tado-overlay-strip")).toBeNull();
+      card.remove();
+    });
+
+    it("shows the entity name", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      expect(card.shadowRoot!.textContent).toContain("Bedroom");
+      card.remove();
+    });
+
+    it("shows current and target temperatures", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      const text = card.shadowRoot!.textContent ?? "";
+      expect(text).toContain("20.4");
+      expect(text).toContain("19.5");
+      card.remove();
+    });
+
+    it("shows MANUAL termination text when override is active", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      expect(card.shadowRoot!.textContent).toContain("Until you resume schedule");
+      card.remove();
+    });
+
+    it('shows "Scheduled" when no override is active', async () => {
+      const card = makeCompact(noOverrideEntity);
+      await (card as any).updateComplete;
+      const line = card.shadowRoot!.querySelector(".compact-termination");
+      expect(line).not.toBeNull();
+      expect(line!.textContent).toContain("Scheduled");
+      card.remove();
+    });
+
+    it("tapping the card fires hass-more-info", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      let detail: Record<string, unknown> | null = null;
+      card.addEventListener("hass-more-info", (e) => {
+        detail = (e as CustomEvent).detail;
+      });
+
+      const haCard = card.shadowRoot!.querySelector("ha-card") as HTMLElement;
+      haCard.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+
+      expect(detail).toEqual({ entityId: "climate.bedroom" });
+      card.remove();
+    });
+
+    it("renders the radiator icon", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      expect(card.shadowRoot!.querySelector("ha-icon")).not.toBeNull();
+      card.remove();
+    });
+  });
 });

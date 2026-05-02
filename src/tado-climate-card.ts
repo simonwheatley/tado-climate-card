@@ -3,7 +3,14 @@ import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TadoCardConfig } from "./types.js";
 import { sliderColor } from "./slider-color.js";
 import { radiatorIconProps } from "./heating-color.js";
-import { setAppliedOverlay } from "./user-prefs.js";
+import {
+  setAppliedOverlay,
+  getAppliedOverlay,
+  effectiveTermination,
+  type AppliedOverlay,
+} from "./user-prefs.js";
+import { remainingLabel } from "./termination-label.js";
+import type { TerminationType } from "./types.js";
 import "./tado-overlay-strip.js";
 
 const STEP = 0.5;
@@ -20,6 +27,11 @@ export class TadoClimateCard extends LitElement {
    *  will be persisted as our NEXT_TIME_BLOCK marker. */
   private _pendingMark = false;
   private _preApplyTimestamp: string | undefined;
+  /** Stored marker for the last NEXT_TIME_BLOCK overlay we applied. Loaded
+   *  on entity change; used by the compact variant to render the correct
+   *  termination label (the strip loads its own marker when used). */
+  @state() private _marker: AppliedOverlay | null = null;
+  private _lastEntityId: string | null = null;
 
   static styles = css`
     :host {
@@ -79,6 +91,66 @@ export class TadoClimateCard extends LitElement {
       width: 100%;
       --control-slider-thickness: 42px;
       --control-slider-background-opacity: 0.15;
+    }
+
+    /* ── Compact variant ───────────────────────────────────── */
+
+    ha-card.compact {
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .compact-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      min-width: 0;
+    }
+
+    .compact-header ha-icon {
+      --mdc-icon-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .compact-name {
+      font-size: 0.95em;
+      font-weight: 500;
+      color: var(--primary-text-color);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .compact-inside {
+      font-size: 0.78em;
+      color: var(--secondary-text-color);
+      padding-left: 28px;
+    }
+
+    .compact-target {
+      font-size: 1.5em;
+      font-weight: 300;
+      color: var(--primary-text-color);
+      line-height: 1.1;
+      padding-left: 28px;
+      margin-top: 2px;
+    }
+
+    .compact-termination {
+      font-size: 0.78em;
+      color: var(--secondary-text-color);
+      padding-left: 28px;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .compact-termination--blank {
+      visibility: hidden;
     }
 
     .extras-required {
@@ -191,6 +263,18 @@ export class TadoClimateCard extends LitElement {
     const entity = this._entity;
     if (!entity) return;
 
+    // Load the stored applied-overlay marker on entity change (mirrors
+    // tado-overlay-strip; the compact variant uses this directly, the full
+    // variant delegates to the strip).
+    if (entity.entity_id !== this._lastEntityId) {
+      this._lastEntityId = entity.entity_id;
+      this._marker = null;
+      const id = entity.entity_id;
+      getAppliedOverlay(this.hass, id).then((m) => {
+        if (this._lastEntityId === id) this._marker = m;
+      });
+    }
+
     // Persist a NEXT_TIME_BLOCK marker once the entity reflects the new
     // overlay. The Tado API reports NEXT_TIME_BLOCK as TIMER, so we record
     // the new timestamp as a fingerprint to recognise it on later reads.
@@ -251,6 +335,10 @@ export class TadoClimateCard extends LitElement {
     // Detect once and surface a banner so users have an actionable next step.
     const hasExtras = "HA_TERMINATION_TYPE" in entity.attributes;
 
+    if (this._config.variant === "compact") {
+      return this._renderCompact(entity, name, currentTemp, sliderValue, icon, iconColor, hasExtras);
+    }
+
     return html`
       <ha-card @click=${this._handleCardClick}>
         <div class="header">
@@ -296,6 +384,59 @@ export class TadoClimateCard extends LitElement {
                 rel="noopener"
               >Open in HACS</a>.
             </div>`}
+      </ha-card>
+    `;
+  }
+
+  /**
+   * Compact variant: name + radiator icon, current/target temperature, and
+   * a single termination line ("Until you resume schedule" / timer / "Scheduled").
+   * No slider, no overlay strip — tap-to-popup opens full controls.
+   *
+   * Designed to fit two-up in a mobile dashboard grid; layout uses min-width: 0
+   * everywhere so flex/grid containers won't overflow.
+   */
+  private _renderCompact(
+    entity: HassEntity,
+    name: string,
+    currentTemp: number | undefined,
+    sliderValue: number,
+    icon: string,
+    iconColor: string,
+    hasExtras: boolean,
+  ) {
+    // Effective termination type: prefer the marker substitution so a
+    // NEXT_TIME_BLOCK overlay (reported as TIMER by the API) renders correctly.
+    const rawType = entity.attributes.HA_TERMINATION_TYPE as TerminationType | undefined;
+    const ts = entity.attributes.HA_TERMINATION_TIMESTAMP;
+    const effective = effectiveTermination(rawType, ts, this._marker) as TerminationType | undefined;
+
+    let terminationText: string | null = null;
+    if (hasExtras) {
+      // TADO_MODE means "following smart schedule"; show "Scheduled".
+      // Other types (MANUAL/TIMER/NEXT_TIME_BLOCK) get their usual label.
+      terminationText = effective === "TADO_MODE" || !effective
+        ? "Scheduled"
+        : remainingLabel(effective, ts);
+    }
+
+    return html`
+      <ha-card class="compact" @click=${this._handleCardClick}>
+        <div class="compact-header">
+          <ha-icon .icon=${icon} style="color:${iconColor}"></ha-icon>
+          <span class="compact-name">${name}</span>
+        </div>
+        <div class="compact-inside">
+          Inside now ${currentTemp?.toFixed(1) ?? "--"}°
+        </div>
+        <div class="compact-target">
+          ${sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`}
+        </div>
+        ${terminationText
+          ? html`<div class="compact-termination">${terminationText}</div>`
+          // Constant footprint: keep the line height even when blank
+          // (e.g. without the integration extras).
+          : html`<div class="compact-termination compact-termination--blank">&nbsp;</div>`}
       </ha-card>
     `;
   }

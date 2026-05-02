@@ -2,24 +2,7 @@ import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TerminationType } from "./types.js";
 import { getAppliedOverlay, effectiveTermination, type AppliedOverlay } from "./user-prefs.js";
-
-function remainingLabel(type: TerminationType, timestamp?: string): string {
-  switch (type) {
-    case "TIMER": {
-      if (!timestamp) return "Timed override";
-      const ms = new Date(timestamp).getTime() - Date.now();
-      if (ms <= 0) return "Expiring";
-      const mins = Math.round(ms / 60000);
-      if (mins < 60) return `${mins}m remaining`;
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return m > 0 ? `${h}h ${m}m remaining` : `${h}h remaining`;
-    }
-    case "NEXT_TIME_BLOCK": return "Until next time block";
-    case "MANUAL":          return "Until you resume schedule";
-    case "TADO_MODE":       return "Zone default";
-  }
-}
+import { remainingLabel } from "./termination-label.js";
 
 @customElement("tado-overlay-strip")
 export class TadoOverlayStrip extends LitElement {

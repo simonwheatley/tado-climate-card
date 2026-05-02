@@ -17,7 +17,7 @@ frontend:
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /local/tado-climate-card.js?v=32
+    - url: /local/tado-climate-card.js?v=33
       type: module
   dashboards:
     lovelace:
