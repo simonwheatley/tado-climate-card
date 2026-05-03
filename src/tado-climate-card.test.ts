@@ -225,5 +225,28 @@ describe("tado-climate-card", () => {
       expect(card.shadowRoot!.querySelector("ha-icon")).not.toBeNull();
       card.remove();
     });
+
+    it("paints ha-card with a tinted background derived from the slider colour", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      const haCard = card.shadowRoot!.querySelector("ha-card.compact") as HTMLElement;
+      const style = haCard.getAttribute("style") ?? "";
+      // Should set --ha-card-background using color-mix(... 75% ...) on a slider colour
+      expect(style).toMatch(/--ha-card-background/);
+      expect(style).toMatch(/color-mix/);
+      expect(style).toMatch(/75%/);
+      // Slider colour at 19.5° is in the yellow/orange band — RGB triplet present
+      expect(style).toMatch(/rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/);
+      card.remove();
+    });
+
+    it("uses white text on the compact card", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      const haCard = card.shadowRoot!.querySelector("ha-card.compact") as HTMLElement;
+      const style = haCard.getAttribute("style") ?? "";
+      expect(style).toMatch(/color\s*:\s*(white|#fff)/i);
+      card.remove();
+    });
   });
 });

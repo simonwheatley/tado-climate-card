@@ -116,7 +116,7 @@ export class TadoClimateCard extends LitElement {
     .compact-name {
       font-size: 0.95em;
       font-weight: 500;
-      color: var(--primary-text-color);
+      color: inherit;
       flex: 1;
       min-width: 0;
       overflow: hidden;
@@ -126,14 +126,15 @@ export class TadoClimateCard extends LitElement {
 
     .compact-inside {
       font-size: 0.78em;
-      color: var(--secondary-text-color);
+      color: inherit;
+      opacity: 0.85;
       padding-left: 28px;
     }
 
     .compact-target {
       font-size: 1.5em;
       font-weight: 300;
-      color: var(--primary-text-color);
+      color: inherit;
       line-height: 1.1;
       padding-left: 28px;
       margin-top: 2px;
@@ -141,7 +142,8 @@ export class TadoClimateCard extends LitElement {
 
     .compact-termination {
       font-size: 0.78em;
-      color: var(--secondary-text-color);
+      color: inherit;
+      opacity: 0.85;
       padding-left: 28px;
       margin-top: 4px;
       overflow: hidden;
@@ -420,8 +422,18 @@ export class TadoClimateCard extends LitElement {
         : remainingLabel(effective, ts);
     }
 
+    // Tinted background = 75% of the slider colour mixed with 25% white.
+    // Saturated enough that white text reads, but a touch softer than the
+    // slider track itself.
+    const bgColor = sliderColor(sliderValue);
+    const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
+    // Override --ha-card-background so the ha-card's own gradient/background
+    // doesn't fight us.
+    const cardStyle =
+      `--ha-card-background: ${tinted}; background: ${tinted}; color: white;`;
+
     return html`
-      <ha-card class="compact" @click=${this._handleCardClick}>
+      <ha-card class="compact" @click=${this._handleCardClick} style=${cardStyle}>
         <div class="compact-header">
           <ha-icon .icon=${icon} style="color:${iconColor}"></ha-icon>
           <span class="compact-name">${name}</span>

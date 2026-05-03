@@ -1081,8 +1081,11 @@ let TadoClimateCard = class extends i {
     if (hasExtras2) {
       terminationText = effective === "TADO_MODE" || !effective ? "Scheduled" : remainingLabel(effective, ts);
     }
+    const bgColor = sliderColor(sliderValue);
+    const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
+    const cardStyle = `--ha-card-background: ${tinted}; background: ${tinted}; color: white;`;
     return b`
-      <ha-card class="compact" @click=${this._handleCardClick}>
+      <ha-card class="compact" @click=${this._handleCardClick} style=${cardStyle}>
         <div class="compact-header">
           <ha-icon .icon=${icon} style="color:${iconColor}"></ha-icon>
           <span class="compact-name">${name}</span>
@@ -1181,7 +1184,7 @@ TadoClimateCard.styles = i$3`
     .compact-name {
       font-size: 0.95em;
       font-weight: 500;
-      color: var(--primary-text-color);
+      color: inherit;
       flex: 1;
       min-width: 0;
       overflow: hidden;
@@ -1191,14 +1194,15 @@ TadoClimateCard.styles = i$3`
 
     .compact-inside {
       font-size: 0.78em;
-      color: var(--secondary-text-color);
+      color: inherit;
+      opacity: 0.85;
       padding-left: 28px;
     }
 
     .compact-target {
       font-size: 1.5em;
       font-weight: 300;
-      color: var(--primary-text-color);
+      color: inherit;
       line-height: 1.1;
       padding-left: 28px;
       margin-top: 2px;
@@ -1206,7 +1210,8 @@ TadoClimateCard.styles = i$3`
 
     .compact-termination {
       font-size: 0.78em;
-      color: var(--secondary-text-color);
+      color: inherit;
+      opacity: 0.85;
       padding-left: 28px;
       margin-top: 4px;
       overflow: hidden;

@@ -1,0 +1,40 @@
+title: Tado Compact
+views:
+  - title: Compact
+    icon: mdi:view-grid
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Compact (2-up)
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:tado-climate-card
+                entity: climate.hallway
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.living_room_2
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.front_bedroom
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.back_bedroom
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.rufus_bedroom
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.extension_dining
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.extension_patio
+                variant: compact
+              - type: custom:tado-climate-card
+                entity: climate.utility
+                variant: compact
