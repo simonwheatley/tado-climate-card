@@ -200,12 +200,9 @@ export class TadoMoreInfoClimate extends LitElement {
       color: var(--primary-text-color);
     }
 
-    .temp-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-bottom: 20px;
+    .inside-now-row {
       padding-left: 34px;
+      margin-bottom: 12px;
     }
 
     .inside-now {
@@ -213,11 +210,20 @@ export class TadoMoreInfoClimate extends LitElement {
       color: var(--secondary-text-color);
     }
 
+    /* Big target temperature lives in its own row, horizontally centred so
+     * it lines up with the slider directly below. */
+    .target-temp-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
     .target-temp-label {
       font-size: 2.2em;
       font-weight: 300;
       color: var(--primary-text-color);
       line-height: 1.1;
+      text-align: center;
     }
 
     .slider-wrap {
@@ -569,8 +575,11 @@ export class TadoMoreInfoClimate extends LitElement {
         <span class="name">${entity.attributes.friendly_name}</span>
       </div>
 
-      <div class="temp-info">
+      <div class="inside-now-row">
         <span class="inside-now">Inside now ${currentTemp?.toFixed(1) ?? "--"}°</span>
+      </div>
+
+      <div class="target-temp-row">
         <span class="target-temp-label">${displayValue(liveValue)}</span>
       </div>
 

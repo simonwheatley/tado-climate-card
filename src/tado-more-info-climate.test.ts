@@ -90,4 +90,30 @@ describe("tado-more-info-climate", () => {
       expect(banner).toBeNull();
     });
   });
+
+  describe("layout", () => {
+    it("centres the target temperature above the slider", async () => {
+      const popup = makePopup(extrasEntity);
+      await (popup as any).updateComplete;
+
+      const label = popup.shadowRoot!.querySelector(".target-temp-label");
+      expect(label).not.toBeNull();
+
+      // The label sits inside a horizontally-centred row that lines up with
+      // the (already centred) slider below.
+      const row = label!.closest(".target-temp-row");
+      expect(row).not.toBeNull();
+    });
+
+    it("renders the target-temp-row immediately before the slider-wrap", async () => {
+      const popup = makePopup(extrasEntity);
+      await (popup as any).updateComplete;
+
+      const row = popup.shadowRoot!.querySelector(".target-temp-row");
+      const sliderWrap = popup.shadowRoot!.querySelector(".slider-wrap");
+      expect(row).not.toBeNull();
+      expect(sliderWrap).not.toBeNull();
+      expect(row!.nextElementSibling).toBe(sliderWrap);
+    });
+  });
 });
