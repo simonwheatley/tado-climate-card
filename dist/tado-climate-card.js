@@ -1083,19 +1083,21 @@ let TadoClimateCard = class extends i {
     }
     const bgColor = temperatureColor(sliderValue);
     const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
-    const cardStyle = `--ha-card-background: ${tinted}; background: ${tinted}; color: white;`;
-    const compactIconColor = entity.attributes.hvac_action === "heating" ? "white" : "#3a3a3a";
+    const cardStyle = `--ha-card-background: ${tinted}; --ha-card-border-width: 0; background: ${tinted}; color: white;`;
+    const isOff = sliderValue < 5 || entity.state === "off";
+    const compactIconColor = isOff ? "#3a3a3a" : "white";
+    const setToText = sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`;
     return b`
       <ha-card class="compact" @click=${this._handleCardClick} style=${cardStyle}>
         <div class="compact-header">
           <ha-icon .icon=${icon} style="color:${compactIconColor}"></ha-icon>
           <span class="compact-name">${name}</span>
         </div>
-        <div class="compact-inside">
-          Inside now ${(currentTemp == null ? void 0 : currentTemp.toFixed(1)) ?? "--"}°
+        <div class="compact-set-to">
+          Set to ${setToText}
         </div>
-        <div class="compact-target">
-          ${sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`}
+        <div class="compact-current-temp">
+          ${currentTemp != null ? `${currentTemp.toFixed(1)}°` : "--"}
         </div>
         ${terminationText ? b`<div class="compact-termination">${terminationText}</div>` : b`<div class="compact-termination compact-termination--blank">&nbsp;</div>`}
       </ha-card>
@@ -1196,7 +1198,7 @@ TadoClimateCard.styles = i$3`
       white-space: nowrap;
     }
 
-    .compact-inside {
+    .compact-set-to {
       font-size: 0.78em;
       font-weight: 500;
       color: inherit;
@@ -1204,8 +1206,8 @@ TadoClimateCard.styles = i$3`
       padding-left: 28px;
     }
 
-    .compact-target {
-      /* Option 1: bigger jump from light-300 to medium-500 */
+    .compact-current-temp {
+      /* Big primary number — current room temp at a glance */
       font-size: 1.7em;
       font-weight: 500;
       letter-spacing: -0.02em;

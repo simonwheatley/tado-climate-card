@@ -127,7 +127,7 @@ export class TadoClimateCard extends LitElement {
       white-space: nowrap;
     }
 
-    .compact-inside {
+    .compact-set-to {
       font-size: 0.78em;
       font-weight: 500;
       color: inherit;
@@ -135,8 +135,8 @@ export class TadoClimateCard extends LitElement {
       padding-left: 28px;
     }
 
-    .compact-target {
-      /* Option 1: bigger jump from light-300 to medium-500 */
+    .compact-current-temp {
+      /* Big primary number — current room temp at a glance */
       font-size: 1.7em;
       font-weight: 500;
       letter-spacing: -0.02em;
@@ -435,15 +435,23 @@ export class TadoClimateCard extends LitElement {
     const bgColor = temperatureColor(sliderValue);
     const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
     // Override --ha-card-background so the ha-card's own gradient/background
-    // doesn't fight us.
+    // doesn't fight us. Strip the default border too — it competes with the
+    // saturated tint and doesn't add any information.
     const cardStyle =
-      `--ha-card-background: ${tinted}; background: ${tinted}; color: white;`;
+      `--ha-card-background: ${tinted}; ` +
+      `--ha-card-border-width: 0; ` +
+      `background: ${tinted}; color: white;`;
 
-    // Compact has its own icon colour rule (the heating-color palette is
-    // designed for white card backgrounds; on a coloured tint we want flat
-    // contrast instead): white when actively heating, darker grey otherwise.
-    const compactIconColor =
-      entity.attributes.hvac_action === "heating" ? "white" : "#3a3a3a";
+    // Compact icon colour rule: white whenever the target temp is set,
+    // darker grey only when the zone is off. The heating-color palette is
+    // designed for white-background cards; on a coloured tint we want flat
+    // contrast instead.
+    const isOff = sliderValue < 5 || entity.state === "off";
+    const compactIconColor = isOff ? "#3a3a3a" : "white";
+
+    // Top secondary line: "Set to <target>°" (or "Set to Off")
+    // Bottom primary number: current temperature
+    const setToText = sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`;
 
     return html`
       <ha-card class="compact" @click=${this._handleCardClick} style=${cardStyle}>
@@ -451,11 +459,11 @@ export class TadoClimateCard extends LitElement {
           <ha-icon .icon=${icon} style="color:${compactIconColor}"></ha-icon>
           <span class="compact-name">${name}</span>
         </div>
-        <div class="compact-inside">
-          Inside now ${currentTemp?.toFixed(1) ?? "--"}°
+        <div class="compact-set-to">
+          Set to ${setToText}
         </div>
-        <div class="compact-target">
-          ${sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`}
+        <div class="compact-current-temp">
+          ${currentTemp != null ? `${currentTemp.toFixed(1)}°` : "--"}
         </div>
         ${terminationText
           ? html`<div class="compact-termination">${terminationText}</div>`

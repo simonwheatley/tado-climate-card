@@ -262,8 +262,9 @@ describe("tado-climate-card", () => {
       card.remove();
     });
 
-    it("uses a darker grey icon when the zone is idle", async () => {
-      // overrideEntity has hvac_action: "heating" by default — switch to idle
+    it("uses a white icon when the target temp is set (not off), even if idle", async () => {
+      // Rule: icon is white whenever the target temp is set, regardless of
+      // whether the zone is actively heating right now.
       const idle = {
         ...overrideEntity,
         attributes: { ...overrideEntity.attributes, hvac_action: "idle" },
@@ -272,12 +273,7 @@ describe("tado-climate-card", () => {
       await (card as any).updateComplete;
       const icon = card.shadowRoot!.querySelector(".compact-header ha-icon") as HTMLElement;
       const style = icon.getAttribute("style") ?? "";
-      // Should not be white, and not the heating-color palette (yellow/amber/orange).
-      expect(style).not.toMatch(/white|#fff/i);
-      expect(style).not.toMatch(/#fdd835|#ffa000|#f4511e/i);
-      // Should look grey-ish — equal R/G/B channels in the dark range, or a hex
-      // representing dark grey. Match #2x..#5x range.
-      expect(style).toMatch(/#[2-5][0-9a-f][2-5][0-9a-f][2-5][0-9a-f]/i);
+      expect(style).toMatch(/white|#fff/i);
       card.remove();
     });
 
@@ -293,6 +289,53 @@ describe("tado-climate-card", () => {
       const style = icon.getAttribute("style") ?? "";
       expect(style).not.toMatch(/white|#fff/i);
       expect(style).toMatch(/#[2-5][0-9a-f][2-5][0-9a-f][2-5][0-9a-f]/i);
+      card.remove();
+    });
+
+    it("removes the card border (stroke)", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      const haCard = card.shadowRoot!.querySelector("ha-card.compact") as HTMLElement;
+      const style = haCard.getAttribute("style") ?? "";
+      expect(style).toMatch(/--ha-card-border-width\s*:\s*0/);
+      card.remove();
+    });
+
+    it('shows "Set to <target>°" in the secondary line', async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      const setTo = card.shadowRoot!.querySelector(".compact-set-to");
+      expect(setTo).not.toBeNull();
+      expect(setTo!.textContent).toContain("Set to");
+      expect(setTo!.textContent).toContain("19.5");
+      card.remove();
+    });
+
+    it("shows the current temperature as the big primary number", async () => {
+      const card = makeCompact(overrideEntity);
+      await (card as any).updateComplete;
+      const primary = card.shadowRoot!.querySelector(".compact-current-temp");
+      expect(primary).not.toBeNull();
+      expect(primary!.textContent).toContain("20.4");
+      // The target temp should NOT be the big number
+      expect(primary!.textContent).not.toContain("19.5");
+      card.remove();
+    });
+
+    it('shows "Set to Off" when target is off', async () => {
+      const off = {
+        ...overrideEntity,
+        state: "off",
+        attributes: {
+          ...overrideEntity.attributes,
+          temperature: 5,
+          hvac_action: "off",
+        },
+      };
+      const card = makeCompact(off);
+      await (card as any).updateComplete;
+      const setTo = card.shadowRoot!.querySelector(".compact-set-to");
+      expect(setTo!.textContent).toMatch(/Set to\s+Off/i);
       card.remove();
     });
   });
