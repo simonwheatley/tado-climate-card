@@ -1,7 +1,7 @@
 import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TadoCardConfig } from "./types.js";
-import { sliderColor } from "./slider-color.js";
+import { temperatureColor } from "./temperature-color.js";
 import { radiatorIconProps } from "./heating-color.js";
 import {
   setAppliedOverlay,
@@ -114,8 +114,11 @@ export class TadoClimateCard extends LitElement {
     }
 
     .compact-name {
-      font-size: 0.95em;
-      font-weight: 500;
+      /* Option 4: small all-caps label-style for the name */
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       color: inherit;
       flex: 1;
       min-width: 0;
@@ -126,14 +129,17 @@ export class TadoClimateCard extends LitElement {
 
     .compact-inside {
       font-size: 0.78em;
+      font-weight: 500;
       color: inherit;
       opacity: 0.85;
       padding-left: 28px;
     }
 
     .compact-target {
-      font-size: 1.5em;
-      font-weight: 300;
+      /* Option 1: bigger jump from light-300 to medium-500 */
+      font-size: 1.7em;
+      font-weight: 500;
+      letter-spacing: -0.02em;
       color: inherit;
       line-height: 1.1;
       padding-left: 28px;
@@ -142,6 +148,7 @@ export class TadoClimateCard extends LitElement {
 
     .compact-termination {
       font-size: 0.78em;
+      font-weight: 500;
       color: inherit;
       opacity: 0.85;
       padding-left: 28px;
@@ -366,7 +373,7 @@ export class TadoClimateCard extends LitElement {
             .showHandle=${true}
             tooltipMode="never"
             label="Target temperature"
-            style="--control-slider-color:${sliderColor(colorValue)};--control-slider-background:${sliderColor(colorValue)}"
+            style="--control-slider-color:${temperatureColor(colorValue)};--control-slider-background:${temperatureColor(colorValue)}"
             @slider-moved=${this._onSliderMoved}
             @value-changed=${this._onSliderChanged}
           ></ha-control-slider>
@@ -404,7 +411,7 @@ export class TadoClimateCard extends LitElement {
     currentTemp: number | undefined,
     sliderValue: number,
     icon: string,
-    iconColor: string,
+    _iconColor: string,
     hasExtras: boolean,
   ) {
     // Effective termination type: prefer the marker substitution so a
@@ -425,17 +432,23 @@ export class TadoClimateCard extends LitElement {
     // Tinted background = 75% of the slider colour mixed with 25% white.
     // Saturated enough that white text reads, but a touch softer than the
     // slider track itself.
-    const bgColor = sliderColor(sliderValue);
+    const bgColor = temperatureColor(sliderValue);
     const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
     // Override --ha-card-background so the ha-card's own gradient/background
     // doesn't fight us.
     const cardStyle =
       `--ha-card-background: ${tinted}; background: ${tinted}; color: white;`;
 
+    // Compact has its own icon colour rule (the heating-color palette is
+    // designed for white card backgrounds; on a coloured tint we want flat
+    // contrast instead): white when actively heating, darker grey otherwise.
+    const compactIconColor =
+      entity.attributes.hvac_action === "heating" ? "white" : "#3a3a3a";
+
     return html`
       <ha-card class="compact" @click=${this._handleCardClick} style=${cardStyle}>
         <div class="compact-header">
-          <ha-icon .icon=${icon} style="color:${iconColor}"></ha-icon>
+          <ha-icon .icon=${icon} style="color:${compactIconColor}"></ha-icon>
           <span class="compact-name">${name}</span>
         </div>
         <div class="compact-inside">

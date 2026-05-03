@@ -619,7 +619,7 @@ function rgb(c2) {
 function lerpRgb(c1, c2, t2) {
   return `rgb(${lerp(c1[0], c2[0], t2)}, ${lerp(c1[1], c2[1], t2)}, ${lerp(c1[2], c2[2], t2)})`;
 }
-function sliderColor(value) {
+function temperatureColor(value) {
   if (value < 5) return rgb(C.grey);
   if (value <= 18.5) return lerpRgb(C.teal, C.green, (value - 5) / (18.5 - 5));
   if (value < 18.75) return rgb(C.green);
@@ -1044,7 +1044,7 @@ let TadoClimateCard = class extends i {
             .showHandle=${true}
             tooltipMode="never"
             label="Target temperature"
-            style="--control-slider-color:${sliderColor(colorValue)};--control-slider-background:${sliderColor(colorValue)}"
+            style="--control-slider-color:${temperatureColor(colorValue)};--control-slider-background:${temperatureColor(colorValue)}"
             @slider-moved=${this._onSliderMoved}
             @value-changed=${this._onSliderChanged}
           ></ha-control-slider>
@@ -1073,7 +1073,7 @@ let TadoClimateCard = class extends i {
    * Designed to fit two-up in a mobile dashboard grid; layout uses min-width: 0
    * everywhere so flex/grid containers won't overflow.
    */
-  _renderCompact(entity, name, currentTemp, sliderValue, icon, iconColor, hasExtras2) {
+  _renderCompact(entity, name, currentTemp, sliderValue, icon, _iconColor, hasExtras2) {
     const rawType = entity.attributes.HA_TERMINATION_TYPE;
     const ts = entity.attributes.HA_TERMINATION_TIMESTAMP;
     const effective = effectiveTermination(rawType, ts, this._marker);
@@ -1081,13 +1081,14 @@ let TadoClimateCard = class extends i {
     if (hasExtras2) {
       terminationText = effective === "TADO_MODE" || !effective ? "Scheduled" : remainingLabel(effective, ts);
     }
-    const bgColor = sliderColor(sliderValue);
+    const bgColor = temperatureColor(sliderValue);
     const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
     const cardStyle = `--ha-card-background: ${tinted}; background: ${tinted}; color: white;`;
+    const compactIconColor = entity.attributes.hvac_action === "heating" ? "white" : "#3a3a3a";
     return b`
       <ha-card class="compact" @click=${this._handleCardClick} style=${cardStyle}>
         <div class="compact-header">
-          <ha-icon .icon=${icon} style="color:${iconColor}"></ha-icon>
+          <ha-icon .icon=${icon} style="color:${compactIconColor}"></ha-icon>
           <span class="compact-name">${name}</span>
         </div>
         <div class="compact-inside">
@@ -1182,8 +1183,11 @@ TadoClimateCard.styles = i$3`
     }
 
     .compact-name {
-      font-size: 0.95em;
-      font-weight: 500;
+      /* Option 4: small all-caps label-style for the name */
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       color: inherit;
       flex: 1;
       min-width: 0;
@@ -1194,14 +1198,17 @@ TadoClimateCard.styles = i$3`
 
     .compact-inside {
       font-size: 0.78em;
+      font-weight: 500;
       color: inherit;
       opacity: 0.85;
       padding-left: 28px;
     }
 
     .compact-target {
-      font-size: 1.5em;
-      font-weight: 300;
+      /* Option 1: bigger jump from light-300 to medium-500 */
+      font-size: 1.7em;
+      font-weight: 500;
+      letter-spacing: -0.02em;
       color: inherit;
       line-height: 1.1;
       padding-left: 28px;
@@ -1210,6 +1217,7 @@ TadoClimateCard.styles = i$3`
 
     .compact-termination {
       font-size: 0.78em;
+      font-weight: 500;
       color: inherit;
       opacity: 0.85;
       padding-left: 28px;
@@ -1529,7 +1537,7 @@ let TadoMoreInfoClimate = class extends i {
           .showHandle=${true}
           tooltipMode="never"
           label="Target temperature"
-          style="--control-slider-color:${sliderColor(liveValue)};--control-slider-background:${sliderColor(liveValue)}"
+          style="--control-slider-color:${temperatureColor(liveValue)};--control-slider-background:${temperatureColor(liveValue)}"
           @slider-moved=${this._onSliderMoved}
           @value-changed=${this._onSliderChanged}
         ></ha-control-slider>

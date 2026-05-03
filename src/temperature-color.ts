@@ -1,5 +1,8 @@
 /**
- * Dynamic slider colour based on HA tile card colour palette.
+ * Single source of truth for "what colour represents this temperature".
+ * Used by:
+ *  - the slider track + handle (in card and popup)
+ *  - the compact card's tinted background
  *
  * Off  (0)       → grey
  * Cool (5–18.5)  → teal → green  (linear interpolation)
@@ -37,13 +40,13 @@ function lerpRgb(c1: RGB, c2: RGB, t: number): string {
 }
 
 /**
- * Returns the CSS `rgb(…)` colour for a given slider value.
- *   0        → grey
+ * Returns the CSS `rgb(…)` colour for a given temperature value (°C).
+ *   0        → grey   (off)
  *   5–18.5   → teal → green
  *   18.5–19  → green / yellow (snaps at midpoint 18.75)
  *   19–25    → yellow → deep-orange
  */
-export function sliderColor(value: number): string {
+export function temperatureColor(value: number): string {
   if (value < 5) return rgb(C.grey);   // Off zone: 0 → 4.5 all grey
   if (value <= 18.5) return lerpRgb(C.teal, C.green, (value - 5) / (18.5 - 5));
   if (value < 18.75) return rgb(C.green);

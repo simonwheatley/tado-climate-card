@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant, HassEntity, TerminationType } from "./types.js";
-import { sliderColor } from "./slider-color.js";
+import { temperatureColor } from "./temperature-color.js";
 import { radiatorIconProps } from "./heating-color.js";
 import {
   getDurationPref,
@@ -585,7 +585,7 @@ export class TadoMoreInfoClimate extends LitElement {
           .showHandle=${true}
           tooltipMode="never"
           label="Target temperature"
-          style="--control-slider-color:${sliderColor(liveValue)};--control-slider-background:${sliderColor(liveValue)}"
+          style="--control-slider-color:${temperatureColor(liveValue)};--control-slider-background:${temperatureColor(liveValue)}"
           @slider-moved=${this._onSliderMoved}
           @value-changed=${this._onSliderChanged}
         ></ha-control-slider>

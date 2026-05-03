@@ -248,5 +248,52 @@ describe("tado-climate-card", () => {
       expect(style).toMatch(/color\s*:\s*(white|#fff)/i);
       card.remove();
     });
+
+    it("uses a white icon when the zone is heating", async () => {
+      const heating = {
+        ...overrideEntity,
+        attributes: { ...overrideEntity.attributes, hvac_action: "heating" },
+      };
+      const card = makeCompact(heating);
+      await (card as any).updateComplete;
+      const icon = card.shadowRoot!.querySelector(".compact-header ha-icon") as HTMLElement;
+      const style = icon.getAttribute("style") ?? "";
+      expect(style).toMatch(/color\s*:\s*(white|#fff)/i);
+      card.remove();
+    });
+
+    it("uses a darker grey icon when the zone is idle", async () => {
+      // overrideEntity has hvac_action: "heating" by default — switch to idle
+      const idle = {
+        ...overrideEntity,
+        attributes: { ...overrideEntity.attributes, hvac_action: "idle" },
+      };
+      const card = makeCompact(idle);
+      await (card as any).updateComplete;
+      const icon = card.shadowRoot!.querySelector(".compact-header ha-icon") as HTMLElement;
+      const style = icon.getAttribute("style") ?? "";
+      // Should not be white, and not the heating-color palette (yellow/amber/orange).
+      expect(style).not.toMatch(/white|#fff/i);
+      expect(style).not.toMatch(/#fdd835|#ffa000|#f4511e/i);
+      // Should look grey-ish — equal R/G/B channels in the dark range, or a hex
+      // representing dark grey. Match #2x..#5x range.
+      expect(style).toMatch(/#[2-5][0-9a-f][2-5][0-9a-f][2-5][0-9a-f]/i);
+      card.remove();
+    });
+
+    it("uses a darker grey icon when the zone is off", async () => {
+      const off = {
+        ...overrideEntity,
+        state: "off",
+        attributes: { ...overrideEntity.attributes, hvac_action: "off" },
+      };
+      const card = makeCompact(off);
+      await (card as any).updateComplete;
+      const icon = card.shadowRoot!.querySelector(".compact-header ha-icon") as HTMLElement;
+      const style = icon.getAttribute("style") ?? "";
+      expect(style).not.toMatch(/white|#fff/i);
+      expect(style).toMatch(/#[2-5][0-9a-f][2-5][0-9a-f][2-5][0-9a-f]/i);
+      card.remove();
+    });
   });
 });
