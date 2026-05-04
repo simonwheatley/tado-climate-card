@@ -604,7 +604,8 @@ const C = {
   grey: [158, 158, 158],
   teal: [0, 150, 136],
   green: [76, 175, 80],
-  yellow: [255, 235, 59],
+  amber: [255, 193, 7],
+  // #ffc107 — was yellow #ffeb3b
   deepOrange: [255, 87, 34]
 };
 function clamp(v2, lo, hi) {
@@ -623,8 +624,8 @@ function temperatureColor(value) {
   if (value < 5) return rgb(C.grey);
   if (value <= 18.5) return lerpRgb(C.teal, C.green, (value - 5) / (18.5 - 5));
   if (value < 18.75) return rgb(C.green);
-  if (value < 19) return rgb(C.yellow);
-  return lerpRgb(C.yellow, C.deepOrange, (value - 19) / (25 - 19));
+  if (value < 19) return rgb(C.amber);
+  return lerpRgb(C.amber, C.deepOrange, (value - 19) / (25 - 19));
 }
 function lerpHex(a2, b2, t2) {
   const parse = (h2) => [

@@ -2,12 +2,12 @@
  * Single source of truth for "what colour represents this temperature".
  * Used by:
  *  - the slider track + handle (in card and popup)
- *  - the compact card's tinted background
+ *  - the compact card's full-saturation background
  *
  * Off  (0)       → grey
  * Cool (5–18.5)  → teal → green  (linear interpolation)
- * Warm (19–25)   → yellow → deep-orange (linear interpolation)
- * Gap  (18.5–19) → snaps to green / yellow at midpoint
+ * Warm (19–25)   → amber → deep-orange (linear interpolation)
+ * Gap  (18.5–19) → snaps to green / amber at midpoint
  *
  * Colour values from Material Design / HA tile card palette:
  * https://www.home-assistant.io/dashboards/tile/#available-colors
@@ -19,7 +19,7 @@ const C = {
   grey:       [158, 158, 158] as RGB,
   teal:       [  0, 150, 136] as RGB,
   green:      [ 76, 175,  80] as RGB,
-  yellow:     [255, 235,  59] as RGB,
+  amber:      [255, 193,   7] as RGB,  // #ffc107 — was yellow #ffeb3b
   deepOrange: [255,  87,  34] as RGB,
 } as const;
 
@@ -43,13 +43,13 @@ function lerpRgb(c1: RGB, c2: RGB, t: number): string {
  * Returns the CSS `rgb(…)` colour for a given temperature value (°C).
  *   0        → grey   (off)
  *   5–18.5   → teal → green
- *   18.5–19  → green / yellow (snaps at midpoint 18.75)
- *   19–25    → yellow → deep-orange
+ *   18.5–19  → green / amber (snaps at midpoint 18.75)
+ *   19–25    → amber → deep-orange
  */
 export function temperatureColor(value: number): string {
   if (value < 5) return rgb(C.grey);   // Off zone: 0 → 4.5 all grey
   if (value <= 18.5) return lerpRgb(C.teal, C.green, (value - 5) / (18.5 - 5));
   if (value < 18.75) return rgb(C.green);
-  if (value < 19) return rgb(C.yellow);
-  return lerpRgb(C.yellow, C.deepOrange, (value - 19) / (25 - 19));
+  if (value < 19) return rgb(C.amber);
+  return lerpRgb(C.amber, C.deepOrange, (value - 19) / (25 - 19));
 }
