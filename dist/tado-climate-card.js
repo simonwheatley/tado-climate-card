@@ -1082,8 +1082,7 @@ let TadoClimateCard = class extends i {
       terminationText = effective === "TADO_MODE" || !effective ? "Scheduled" : remainingLabel(effective, ts);
     }
     const bgColor = temperatureColor(sliderValue);
-    const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
-    const cardStyle = `--ha-card-background: ${tinted}; --ha-card-border-width: 0; background: ${tinted}; color: white;`;
+    const cardStyle = `--ha-card-background: ${bgColor}; --ha-card-border-width: 0; background: ${bgColor}; color: white;`;
     const isOff = sliderValue < 5 || entity.state === "off";
     const compactIconColor = isOff ? "#3a3a3a" : "white";
     const setToText = sliderValue < 5 ? "Off" : `${sliderValue.toFixed(1)}°`;

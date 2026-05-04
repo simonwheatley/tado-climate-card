@@ -429,18 +429,15 @@ export class TadoClimateCard extends LitElement {
         : remainingLabel(effective, ts);
     }
 
-    // Tinted background = 75% of the slider colour mixed with 25% white.
-    // Saturated enough that white text reads, but a touch softer than the
-    // slider track itself.
+    // Background = full-saturation temperature colour (no tint). Override
+    // --ha-card-background so ha-card's own gradient doesn't fight us.
+    // Strip the default border too — it competes with the colour and
+    // doesn't add any information.
     const bgColor = temperatureColor(sliderValue);
-    const tinted = `color-mix(in srgb, ${bgColor} 75%, white)`;
-    // Override --ha-card-background so the ha-card's own gradient/background
-    // doesn't fight us. Strip the default border too — it competes with the
-    // saturated tint and doesn't add any information.
     const cardStyle =
-      `--ha-card-background: ${tinted}; ` +
+      `--ha-card-background: ${bgColor}; ` +
       `--ha-card-border-width: 0; ` +
-      `background: ${tinted}; color: white;`;
+      `background: ${bgColor}; color: white;`;
 
     // Compact icon colour rule: white whenever the target temp is set,
     // darker grey only when the zone is off. The heating-color palette is
