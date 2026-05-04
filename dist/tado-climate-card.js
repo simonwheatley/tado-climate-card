@@ -1199,7 +1199,7 @@ TadoClimateCard.styles = i$3`
 
     .compact-set-to {
       font-size: 0.78em;
-      font-weight: 500;
+      font-weight: 600;
       color: inherit;
       opacity: 0.85;
       padding-left: 28px;
@@ -1218,7 +1218,7 @@ TadoClimateCard.styles = i$3`
 
     .compact-termination {
       font-size: 0.78em;
-      font-weight: 500;
+      font-weight: 600;
       color: inherit;
       opacity: 0.85;
       padding-left: 28px;
