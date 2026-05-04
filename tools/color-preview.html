@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tado Card — Colour & Type Preview</title>
+<style>
+  :root {
+    /* HA named palette (light theme defaults) */
+    --red:         #f44336;
+    --pink:        #e91e63;
+    --purple:      #926bc7;
+    --deep-purple: #6e41ab;
+    --indigo:      #3f51b5;
+    --blue:        #2196f3;
+    --light-blue:  #03a9f4;
+    --cyan:        #00bcd4;
+    --teal:        #009688;
+    --green:       #4caf50;
+    --light-green: #8bc34a;
+    --lime:        #cddc39;
+    --yellow:      #ffeb3b;
+    --amber:       #ffc107;
+    --orange:      #ff9800;
+    --deep-orange: #ff6f22;
+    --brown:       #795548;
+    --blue-grey:   #607d8b;
+    --light-grey:  #bdbdbd;
+    --grey:        #9e9e9e;
+    --dark-grey:   #606060;
+    --black:       #000000;
+    --white:       #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f7;
+    color: #1a1a1a;
+    line-height: 1.5;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── Controls panel ────────────────────────────────────── */
+
+  .panel {
+    padding: 20px 22px;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    overflow-y: auto;
+  }
+
+  .panel h1 {
+    font-size: 16px;
+    margin: 0 0 16px;
+    font-weight: 600;
+  }
+
+  .panel h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 18px 0 6px;
+    color: #666;
+    font-weight: 600;
+  }
+
+  .field {
+    margin-bottom: 10px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 3px;
+  }
+
+  .field select,
+  .field input[type="text"],
+  .field input[type="number"],
+  .field input[type="range"] {
+    width: 100%;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+  }
+
+  .field input[type="range"] {
+    padding: 0;
+  }
+
+  .field input[type="color"] {
+    width: 100%;
+    height: 32px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .row > * {
+    flex: 1;
+  }
+
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .swatch {
+    aspect-ratio: 1;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .swatch[data-selected="true"] {
+    outline: 2px solid #1a1a1a;
+    outline-offset: 1px;
+  }
+
+  .swatch::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    white-space: nowrap;
+    background: #1a1a1a;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+    z-index: 10;
+  }
+
+  .swatch:hover::after {
+    opacity: 1;
+  }
+
+  .value-display {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  /* ── Preview pane ──────────────────────────────────────── */
+
+  .preview {
+    padding: 28px;
+    overflow-y: auto;
+  }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    max-width: 1200px;
+  }
+
+  .card {
+    border-radius: 12px;
+    padding: 14px 16px;
+    transition: background 0.15s;
+    cursor: default;
+  }
+
+  .card-name {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: var(--label-size);
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .card-set-to {
+    font-size: var(--label-size);
+    opacity: 0.85;
+    font-weight: var(--text-weight);
+    padding-left: 28px;
+  }
+
+  .card-temp {
+    font-size: var(--big-size);
+    font-weight: var(--big-weight);
+    letter-spacing: var(--big-tracking);
+    line-height: 1.1;
+    padding-left: 28px;
+    margin-top: 2px;
+  }
+
+  .card-status {
+    font-size: var(--label-size);
+    font-weight: var(--text-weight);
+    opacity: 0.85;
+    padding-left: 28px;
+    margin-top: 4px;
+  }
+
+  .card-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background: currentColor;
+    -webkit-mask: var(--icon-mask) center/contain no-repeat;
+            mask: var(--icon-mask) center/contain no-repeat;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  /* radiator icon as inline SVG mask */
+  :root {
+    --icon-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 7v10h2v-2h4v2h2V7m-1 1v6H9V8z M5 19h14v2H5z M7 4l-1 2 M11 4l-1 2 M15 4l-1 2 M19 4l-1 2"/></svg>');
+  }
+
+  .preview-meta {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .meta-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+  }
+
+  .meta-value {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+
+  .contrast {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .contrast.pass-aaa  { background: #c8e6c9; color: #1b5e20; }
+  .contrast.pass-aa   { background: #fff9c4; color: #5d4037; }
+  .contrast.pass-aa-large { background: #ffe0b2; color: #4e342e; }
+  .contrast.fail      { background: #ffcdd2; color: #b71c1c; }
+
+  .preview-section {
+    margin-bottom: 28px;
+  }
+
+  .preview-section > h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Controls ──────────────────────────────────────────── -->
+  <div class="panel">
+    <h1>Tado Card · Type & Colour Preview</h1>
+
+    <h2>Background</h2>
+    <div class="field">
+      <div class="swatches" id="bg-swatches"></div>
+    </div>
+    <div class="field">
+      <label>Custom hex</label>
+      <input type="color" id="bg-custom" value="#009688">
+    </div>
+
+    <h2>Text colour</h2>
+    <div class="field">
+      <div class="row">
+        <button onclick="setText('#ffffff')" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer">White</button>
+        <button onclick="setText('#1a1a1a')" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;background:#1a1a1a;color:#fff;cursor:pointer">Dark</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Custom hex</label>
+      <input type="color" id="text-custom" value="#ffffff">
+    </div>
+
+    <h2>Type</h2>
+    <div class="field">
+      <label>Font family</label>
+      <select id="font-family">
+        <option value='Roboto, system-ui, sans-serif'>Roboto (HA default)</option>
+        <option value='system-ui, -apple-system, "Segoe UI", sans-serif'>system-ui</option>
+        <option value='-apple-system, BlinkMacSystemFont, sans-serif'>San Francisco</option>
+        <option value='ui-rounded, "SF Compact Rounded", system-ui, sans-serif'>ui-rounded</option>
+        <option value='"SF Pro Display", system-ui, sans-serif'>SF Pro Display</option>
+        <option value='"Helvetica Neue", Helvetica, sans-serif'>Helvetica Neue</option>
+        <option value='Inter, system-ui, sans-serif'>Inter</option>
+        <option value='"Segoe UI", system-ui, sans-serif'>Segoe UI</option>
+        <option value='Arial, sans-serif'>Arial</option>
+        <option value='Georgia, serif'>Georgia (serif)</option>
+        <option value='"Iowan Old Style", Georgia, serif'>Iowan Old Style</option>
+        <option value='ui-monospace, "SF Mono", Menlo, monospace'>monospace</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Big number weight <span class="value-display" id="big-weight-val">500</span></label>
+      <input type="range" id="big-weight" min="100" max="900" step="100" value="500">
+    </div>
+    <div class="field">
+      <label>Body text weight <span class="value-display" id="text-weight-val">600</span></label>
+      <input type="range" id="text-weight" min="100" max="900" step="100" value="600">
+    </div>
+
+    <div class="field">
+      <label>Big number size (em) <span class="value-display" id="big-size-val">1.7</span></label>
+      <input type="range" id="big-size" min="1" max="3" step="0.1" value="1.7">
+    </div>
+    <div class="field">
+      <label>Label size (em) <span class="value-display" id="label-size-val">0.78</span></label>
+      <input type="range" id="label-size" min="0.6" max="1.2" step="0.02" value="0.78">
+    </div>
+    <div class="field">
+      <label>Big number tracking <span class="value-display" id="big-tracking-val">-0.02em</span></label>
+      <input type="range" id="big-tracking" min="-0.1" max="0.1" step="0.005" value="-0.02">
+    </div>
+
+    <h2>Card padding</h2>
+    <div class="field">
+      <label><span class="value-display" id="padding-val">14px 16px</span></label>
+      <input type="range" id="padding" min="6" max="28" step="2" value="14">
+    </div>
+  </div>
+
+  <!-- ── Preview ──────────────────────────────────────────── -->
+  <div class="preview">
+
+    <div class="preview-meta">
+      <div class="meta-item">
+        <span class="meta-label">Background</span>
+        <span class="meta-value" id="bg-display">#009688</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Text</span>
+        <span class="meta-value" id="text-display">#ffffff</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Contrast (text vs bg)</span>
+        <span class="contrast" id="contrast-display">—</span>
+      </div>
+    </div>
+
+    <div class="preview-section">
+      <h3>Single card preview</h3>
+      <div class="preview-grid" id="single-preview"></div>
+    </div>
+
+    <div class="preview-section">
+      <h3>Full HA palette × current type settings</h3>
+      <p style="margin: 0 0 10px; color: #666; font-size: 13px;">Each tile uses the same text colour and type spec; only the background varies. WCAG contrast is shown per tile (with current text colour).</p>
+      <div class="preview-grid" id="palette-preview"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PALETTE = [
+  { name: 'red',         hex: '#f44336' },
+  { name: 'pink',        hex: '#e91e63' },
+  { name: 'purple',      hex: '#926bc7' },
+  { name: 'deep-purple', hex: '#6e41ab' },
+  { name: 'indigo',      hex: '#3f51b5' },
+  { name: 'blue',        hex: '#2196f3' },
+  { name: 'light-blue',  hex: '#03a9f4' },
+  { name: 'cyan',        hex: '#00bcd4' },
+  { name: 'teal',        hex: '#009688' },
+  { name: 'green',       hex: '#4caf50' },
+  { name: 'light-green', hex: '#8bc34a' },
+  { name: 'lime',        hex: '#cddc39' },
+  { name: 'yellow',      hex: '#ffeb3b' },
+  { name: 'amber',       hex: '#ffc107' },
+  { name: 'orange',      hex: '#ff9800' },
+  { name: 'deep-orange', hex: '#ff6f22' },
+  { name: 'brown',       hex: '#795548' },
+  { name: 'blue-grey',   hex: '#607d8b' },
+  { name: 'light-grey',  hex: '#bdbdbd' },
+  { name: 'grey',        hex: '#9e9e9e' },
+  { name: 'dark-grey',   hex: '#606060' },
+  { name: 'black',       hex: '#000000' },
+];
+
+// ── Build swatches ───────────────────────────────────────
+const swatchesEl = document.getElementById('bg-swatches');
+PALETTE.forEach(c => {
+  const sw = document.createElement('div');
+  sw.className = 'swatch';
+  sw.style.background = c.hex;
+  sw.dataset.hex = c.hex;
+  sw.dataset.name = `${c.name} ${c.hex}`;
+  sw.onclick = () => {
+    setBg(c.hex);
+    document.querySelectorAll('.swatch').forEach(s => s.dataset.selected = 'false');
+    sw.dataset.selected = 'true';
+  };
+  swatchesEl.appendChild(sw);
+});
+
+// ── State ────────────────────────────────────────────────
+const state = {
+  bg: '#009688',
+  text: '#ffffff',
+  fontFamily: 'Roboto, system-ui, sans-serif',
+  bigWeight: 500,
+  textWeight: 600,
+  bigSize: 1.7,
+  labelSize: 0.78,
+  bigTracking: -0.02,
+  padding: 14,
+};
+
+// ── Contrast helpers ─────────────────────────────────────
+function hexToRgb(h) {
+  const m = h.replace('#', '');
+  return [
+    parseInt(m.slice(0,2), 16),
+    parseInt(m.slice(2,4), 16),
+    parseInt(m.slice(4,6), 16),
+  ];
+}
+function relLuminance([r,g,b]) {
+  const lin = c => {
+    const cs = c / 255;
+    return cs <= 0.03928 ? cs/12.92 : Math.pow((cs+0.055)/1.055, 2.4);
+  };
+  return 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+}
+function contrastRatio(hex1, hex2) {
+  const L1 = relLuminance(hexToRgb(hex1));
+  const L2 = relLuminance(hexToRgb(hex2));
+  const [hi, lo] = L1 > L2 ? [L1, L2] : [L2, L1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+function contrastBadge(ratio) {
+  const r = ratio.toFixed(2);
+  if (ratio >= 7)   return { cls: 'pass-aaa',     text: `${r}:1 AAA` };
+  if (ratio >= 4.5) return { cls: 'pass-aa',      text: `${r}:1 AA` };
+  if (ratio >= 3)   return { cls: 'pass-aa-large',text: `${r}:1 AA Large` };
+                     return { cls: 'fail',        text: `${r}:1 ❌` };
+}
+
+// ── Rendering ────────────────────────────────────────────
+function applyVars(el, bg, text) {
+  el.style.background = bg;
+  el.style.color = text;
+  el.style.fontFamily = state.fontFamily;
+  el.style.padding = `${state.padding}px ${state.padding + 2}px`;
+  el.style.setProperty('--big-weight', state.bigWeight);
+  el.style.setProperty('--text-weight', state.textWeight);
+  el.style.setProperty('--big-size', state.bigSize + 'em');
+  el.style.setProperty('--label-size', state.labelSize + 'em');
+  el.style.setProperty('--big-tracking', state.bigTracking + 'em');
+}
+
+function cardHtml() {
+  return `
+    <div class="card-name"><span class="card-icon"></span>Living Room</div>
+    <div class="card-set-to">Set to 19.5°</div>
+    <div class="card-temp">20.4°</div>
+    <div class="card-status">Until you resume schedule</div>
+  `;
+}
+
+function renderSingle() {
+  const root = document.getElementById('single-preview');
+  root.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  applyVars(card, state.bg, state.text);
+  card.innerHTML = cardHtml();
+  root.appendChild(card);
+}
+
+function renderPalette() {
+  const root = document.getElementById('palette-preview');
+  root.innerHTML = '';
+  PALETTE.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    applyVars(card, c.hex, state.text);
+    const ratio = contrastRatio(c.hex, state.text);
+    const badge = contrastBadge(ratio);
+    card.innerHTML = `
+      ${cardHtml()}
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:11px;opacity:0.85">
+        <span>${c.name}</span>
+        <span class="contrast ${badge.cls}" style="font-size:10px">${badge.text}</span>
+      </div>
+    `;
+    root.appendChild(card);
+  });
+}
+
+function updateMeta() {
+  document.getElementById('bg-display').textContent = state.bg;
+  document.getElementById('text-display').textContent = state.text;
+  const ratio = contrastRatio(state.bg, state.text);
+  const b = contrastBadge(ratio);
+  const el = document.getElementById('contrast-display');
+  el.textContent = b.text;
+  el.className = `contrast ${b.cls}`;
+}
+
+function rerender() {
+  renderSingle();
+  renderPalette();
+  updateMeta();
+}
+
+// ── Event wiring ─────────────────────────────────────────
+function setBg(hex) {
+  state.bg = hex;
+  document.getElementById('bg-custom').value = hex;
+  rerender();
+}
+function setText(hex) {
+  state.text = hex;
+  document.getElementById('text-custom').value = hex;
+  rerender();
+}
+
+document.getElementById('bg-custom').oninput = e => setBg(e.target.value);
+document.getElementById('text-custom').oninput = e => setText(e.target.value);
+
+document.getElementById('font-family').onchange = e => {
+  state.fontFamily = e.target.value;
+  rerender();
+};
+
+[
+  ['big-weight', 'bigWeight', v => +v, 'big-weight-val', v => v],
+  ['text-weight', 'textWeight', v => +v, 'text-weight-val', v => v],
+  ['big-size', 'bigSize', v => +v, 'big-size-val', v => v],
+  ['label-size', 'labelSize', v => +v, 'label-size-val', v => v],
+  ['big-tracking', 'bigTracking', v => +v, 'big-tracking-val', v => `${v}em`],
+  ['padding', 'padding', v => +v, 'padding-val', v => `${v}px ${+v + 2}px`],
+].forEach(([id, key, parse, valId, fmt]) => {
+  const inp = document.getElementById(id);
+  inp.oninput = e => {
+    state[key] = parse(e.target.value);
+    document.getElementById(valId).textContent = fmt(e.target.value);
+    rerender();
+  };
+});
+
+// Initial render
+document.querySelectorAll('.swatch').forEach(s => {
+  if (s.dataset.hex === state.bg) s.dataset.selected = 'true';
+});
+rerender();
+</script>
+</body>
+</html>
